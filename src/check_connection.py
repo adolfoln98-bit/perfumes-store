@@ -1,11 +1,9 @@
-from db import get_connection
+from db import get_session
+from sqlalchemy import text
 
-with get_connection() as conn:
 
-    with conn.cursor() as cursor:
-        cursor.execute("""
-        SELECT CURRENT_TIMESTAMP;
-        """)
-
-        respuesta = cursor.fetchone()
-        print(respuesta[0])
+with get_session() as session:
+    query= text("SELECT CURRENT_TIMESTAMP;")
+    resultado = session.execute(query)
+    print(resultado.scalar())
+    

@@ -1,32 +1,18 @@
-from db import get_connection
-from psycopg.rows import dict_row
-from psycopg.errors import UniqueViolation
+from sqlalchemy import select
+from models import Marca
 
-class MarcaDuplicadaError(Exception):
-    pass
+def crear_marca(session, nombre_marca):
+     
+    marca = Marca(nombre=nombre_marca)
+    session.add(marca)
 
-def crear_marca(nombre_marca):
-    try:
-        with get_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                INSERT INTO marcas(nombre)
-                VALUES (%s)
-                RETURNING id
-                """, (nombre_marca,))
-                id_marca = cursor.fetchone()[0]
-                conn.commit()
-    except UniqueViolation:
-        raise MarcaDuplicadaError(f'La marca {nombre_marca} ya existe')        
-    return id_marca
+    return marca
 
-def obtener_marcas():
-    with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cursor:
-            cursor.execute("""
-            SELECT id, nombre
-            FROM marcas
-            """)
-            marcas = cursor.fetchall()
+def obtener_marcas(session):
+    
+    consulta_marcas = select(Marca)
+    resultado = session.execute(consulta_marcas)
+    marcas = resultado.scalars().all()
+            
     return marcas
 
