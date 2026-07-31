@@ -1,9 +1,9 @@
 from sqlalchemy import select
 from models import Marca
 
-def crear_marca(session, nombre_marca):
+def crear_marca(session, nombre):
      
-    marca = Marca(nombre=nombre_marca)
+    marca = Marca(nombre=nombre)
     session.add(marca)
 
     return marca
@@ -16,3 +16,13 @@ def obtener_marcas(session):
             
     return marcas
 
+def obtener_marca_por_id(session, id_marca):
+    return session.get(Marca, id_marca)
+
+def actualizar_marca(marca, nuevo_nombre):
+    marca.nombre = nuevo_nombre
+    
+
+def eliminar_marca(session, marca):
+    session.delete(marca)
+    

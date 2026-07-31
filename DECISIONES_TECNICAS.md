@@ -87,3 +87,43 @@ Continuar utilizando exclusivamente psycopg y SQL manual.
 Motivo del descarte
 
 Aunque proporciona un control total sobre las consultas y sigue siendo una opción válida en determinados escenarios, requiere escribir y mantener manualmente el acceso a datos, el mapeo entre filas y objetos, y gran parte de la lógica de persistencia. A medida que el dominio del proyecto crece, este enfoque incrementa el esfuerzo de mantenimiento sin aportar un beneficio proporcional.
+
+DT-006 — Gestión de transacciones mediante la capa de servicios
+
+Decisión
+
+Centralizar la gestión de las transacciones de base de datos en la capa de servicios.
+
+Motivo
+
+La capa de servicios representa cada caso de uso de la aplicación y constituye la unidad de trabajo de SQLAlchemy. Por este motivo, es la responsable de abrir la sesión, realizar flush(), confirmar los cambios mediante commit() y revertirlos con rollback() cuando sea necesario.
+
+Esta separación permite que los repositorios se limiten exclusivamente al acceso a datos, evitando que cada operación decida de forma independiente cuándo persistir los cambios. De este modo es posible coordinar varias operaciones sobre diferentes repositorios dentro de una única transacción.
+
+Alternativas consideradas
+
+Gestionar commit() y rollback() directamente desde cada repositorio.
+
+Motivo del descarte
+
+Este enfoque rompe el principio de responsabilidad única y dificulta coordinar varias operaciones dentro de una misma transacción. Además, obliga a que el repositorio tome decisiones que pertenecen al caso de uso y no al acceso a datos.
+
+DT-007 — Separación entre repositorios y servicios
+
+Decisión
+
+Mantener una separación explícita entre la capa de repositorios y la capa de servicios.
+
+Motivo
+
+Los repositorios se encargan exclusivamente de interactuar con la base de datos y devolver entidades del dominio. La capa de servicios coordina la lógica de negocio, interpreta los resultados obtenidos, gestiona las transacciones y traduce las excepciones técnicas en excepciones propias de la aplicación.
+
+Esta organización facilita el mantenimiento del código, mejora su reutilización y mantiene desacopladas las responsabilidades de persistencia y negocio.
+
+Alternativas consideradas
+
+Implementar toda la lógica directamente en los repositorios.
+
+Motivo del descarte
+
+Aunque reduce el número de clases en proyectos pequeños, termina mezclando acceso a datos, reglas de negocio y gestión de transacciones en un mismo componente, dificultando la evolución del proyecto conforme aumenta su complejidad.
