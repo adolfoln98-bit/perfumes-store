@@ -30,6 +30,7 @@ class Perfume(Base):
     
     __table_args__ = (
         CheckConstraint("precio > 0", name="ck_perfumes_precio_positivo"),
+        CheckConstraint("stock >=0", name="ck_stock_no_negativo"),
     )
         
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -43,6 +44,12 @@ class Perfume(Base):
         Numeric(10,2),
         nullable=False
     )
+    stock: Mapped[int] = mapped_column(
+        default=0,
+        server_default="0",
+        nullable=False
+    )
+    
     marca_id: Mapped[int | None] = mapped_column(ForeignKey("marcas.id", ondelete="SET NULL"), nullable=True) 
     
     marca: Mapped["Marca | None"] = relationship(back_populates="perfumes")
@@ -54,6 +61,7 @@ class Perfume(Base):
             f"Id={self.id}, "
             f"nombre={self.nombre}, "
             f"volumen_ml={self.volumen_ml}, " 
-            f"precio={self.precio}",
+            f"precio={self.precio}, "
+            f"stock={self.stock}, "
             f"marca_id={self.marca_id}"
             )

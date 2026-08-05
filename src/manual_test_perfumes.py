@@ -40,6 +40,19 @@ def test_eliminar_perfume():
 def test_eliminar_perfume_invalido():
     perfume = perfumes_service.eliminar_perfume(123456)
     print(perfume)
+    
+def test_reponer_stock_correcto():
+    # Reposición correcta
+    print(perfumes_service.reponer_stock(2, 10))
+    
+def test_reponer_stock_perfume_invalido(): 
+    print(perfumes_service.reponer_stock(9999, 1))
+    
+def test_reponer_stock_valor_invlaido():
+    print(perfumes_service.reponer_stock(2, 0))
+
+def test_reponer_stock_valor_negativo():
+    print(perfumes_service.reponer_stock(2, -5))
 
 if __name__ == "__main__":
     #test_crear_perfume()
@@ -51,4 +64,8 @@ if __name__ == "__main__":
     #test_actualizar_perfume_invalido()
     #test_actualizar_perfume_marca_invalida()
     #test_eliminar_perfume()
-    test_eliminar_perfume_invalido()
+    #test_eliminar_perfume_invalido()
+    #test_reponer_stock_correcto()
+    #test_reponer_stock_perfume_invalido()
+    #test_reponer_stock_valor_invlaido()
+    test_reponer_stock_valor_negativo()

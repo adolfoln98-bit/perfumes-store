@@ -127,3 +127,25 @@ Implementar toda la lógica directamente en los repositorios.
 Motivo del descarte
 
 Aunque reduce el número de clases en proyectos pequeños, termina mezclando acceso a datos, reglas de negocio y gestión de transacciones en un mismo componente, dificultando la evolución del proyecto conforme aumenta su complejidad.
+
+DT-008 — Gestión de la evolución del esquema mediante Alembic
+
+Decisión
+
+Utilizar Alembic como herramienta para gestionar las migraciones del esquema de la base de datos.
+
+Motivo
+
+A medida que el proyecto evoluciona, la estructura de la base de datos cambia de forma continua. Alembic permite versionar estos cambios, mantener un historial de la evolución del esquema y aplicarlos de forma reproducible en distintos entornos.
+
+Las migraciones pasan a formar parte del código fuente, evitando modificaciones manuales sobre la base de datos y garantizando que todos los entornos utilicen la misma versión del esquema.
+
+Además, la integración con SQLAlchemy permite generar automáticamente propuestas de migración a partir de los modelos ORM, que posteriormente son revisadas y adaptadas cuando es necesario para preservar la integridad de los datos existentes.
+
+Alternativas consideradas
+
+Modificar manualmente la estructura de la base de datos mediante pgAdmin o scripts SQL ejecutados manualmente.
+
+Motivo del descarte
+
+Aunque este enfoque resulta suficiente durante las primeras fases del desarrollo, deja de ser escalable conforme aumenta el número de cambios o de entornos donde desplegar la aplicación. Además, dificulta reproducir el historial de modificaciones, aumenta el riesgo de inconsistencias entre bases de datos y obliga a gestionar manualmente la evolución del esquema.

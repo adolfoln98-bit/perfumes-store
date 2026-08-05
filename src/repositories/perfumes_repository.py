@@ -3,11 +3,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 
-def crear_perfume(session, nombre, volumen_ml, marca_id):
+def crear_perfume(session, nombre, volumen_ml, marca_id, precio, stock):
     perfume = Perfume(
         nombre=nombre,
         volumen_ml=volumen_ml,
-        marca_id=marca_id
+        marca_id=marca_id,
+        precio=precio,
+        stock=stock
         )
     session.add(perfume)
     
@@ -35,10 +37,15 @@ def obtener_perfume_por_id(session, id_perfume):
     
     return resultado.scalar_one_or_none()
 
-def actualizar_perfume(perfume, nuevo_nombre, nuevo_volumen, nueva_marca_id):
+def actualizar_perfume(perfume, nuevo_nombre, nuevo_volumen, nueva_marca_id, nuevo_precio, nuevo_stock):
     perfume.nombre = nuevo_nombre
     perfume.volumen_ml = nuevo_volumen
     perfume.marca_id = nueva_marca_id
+    perfume.precio = nuevo_precio
+    perfume.stock = nuevo_stock
 
 def eliminar_perfume(session, perfume):
     session.delete(perfume)
+
+def reponer_stock(perfume, cantidad):
+    perfume.stock += cantidad
