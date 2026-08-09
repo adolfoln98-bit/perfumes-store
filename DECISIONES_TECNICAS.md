@@ -149,3 +149,47 @@ Modificar manualmente la estructura de la base de datos mediante pgAdmin o scrip
 Motivo del descarte
 
 Aunque este enfoque resulta suficiente durante las primeras fases del desarrollo, deja de ser escalable conforme aumenta el número de cambios o de entornos donde desplegar la aplicación. Además, dificulta reproducir el historial de modificaciones, aumenta el riesgo de inconsistencias entre bases de datos y obliga a gestionar manualmente la evolución del esquema.
+
+DT-009 — Base de datos independiente para testing
+
+Decisión
+
+Utilizar una base de datos PostgreSQL independiente para la ejecución de los tests automatizados.
+
+Motivo
+
+Los tests necesitan crear, modificar y eliminar datos de forma controlada. Utilizar una base de datos específica para testing permite realizar estas operaciones sin afectar a los datos utilizados durante el desarrollo normal de la aplicación.
+
+La base de datos de testing mantiene el mismo esquema que la base de desarrollo mediante las migraciones de Alembic. De este modo, los tests se ejecutan sobre una estructura equivalente a la utilizada por la aplicación y se comprueba además que el historial de migraciones permite reconstruir correctamente el esquema desde una base de datos vacía.
+
+La conexión se configura mediante una variable de entorno independiente, TEST_DATABASE_URL, manteniendo separadas las configuraciones de desarrollo y testing.
+
+Alternativas consideradas
+
+Ejecutar los tests utilizando directamente la base de datos de desarrollo.
+
+Motivo del descarte
+
+Este enfoque haría que los tests dependieran del estado previo de los datos y podría provocar modificaciones o eliminaciones accidentales sobre información utilizada durante el desarrollo. Además, dificultaría garantizar que cada ejecución de los tests parte de un entorno controlado.
+
+DT-010 — Testing automatizado con Pytest y aislamiento transaccional
+
+Decisión
+
+Utilizar Pytest como herramienta de testing automatizado y aislar cada test mediante una transacción independiente que se revierte al finalizar su ejecución.
+
+Motivo
+
+A medida que aumenta el número de casos de uso de la aplicación, las pruebas manuales dejan de ser suficientes para comprobar de forma eficiente que los cambios realizados no rompen funcionalidades existentes. Pytest permite automatizar estas comprobaciones y ejecutar de forma repetible toda la suite de tests.
+
+Cada test utiliza una sesión conectada a la base de datos de testing dentro de una transacción exterior. Al finalizar el test se realiza rollback de dicha transacción, evitando que los datos generados durante una prueba permanezcan disponibles para las siguientes.
+
+La infraestructura de testing sustituye temporalmente las sesiones utilizadas por los servicios por sesiones asociadas a la base de datos de testing. Esto permite mantener intacto el comportamiento del código de producción, incluyendo la responsabilidad de la capa de servicios sobre commit(), flush() y rollback(), al mismo tiempo que se garantiza el aislamiento entre tests.
+
+Alternativas consideradas
+
+Continuar utilizando exclusivamente scripts de pruebas manuales o permitir que cada test confirme permanentemente sus cambios en la base de datos de testing.
+
+Motivo del descarte
+
+Las pruebas manuales requieren intervención del desarrollador y resultan cada vez más costosas conforme aumenta el número de funcionalidades. Por otra parte, permitir que los tests mantengan permanentemente los datos creados introduciría dependencias entre pruebas y haría que sus resultados pudieran variar en función del orden o de ejecuciones anteriores.

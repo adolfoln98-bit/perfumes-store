@@ -1,5 +1,7 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Numeric, Text, String
+from enum import Enum
+from sqlalchemy import Enum as sqlEnum
 
 from decimal import Decimal
 
@@ -65,3 +67,43 @@ class Perfume(Base):
             f"stock={self.stock}, "
             f"marca_id={self.marca_id}"
             )
+        
+class RolUsuario(Enum):
+    USER = "user"
+    ADMIN = "admin"
+    
+class Usuario(Base):
+    
+    __tablename__ = "usuarios"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    
+    email: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        unique=True
+    ) 
+    
+    password_hash: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False
+    )
+    
+    rol: Mapped[RolUsuario] = mapped_column(
+        sqlEnum(
+            RolUsuario,
+            name="rol_usuario",
+            values_callable= lambda enum: [
+                miembro.value for miembro in enum
+            ]
+        ),
+        server_default="user",
+        default=RolUsuario.USER
+    )
+    
+    def __repr__(self):
+        return (
+            f"Id={self.id}, "
+            f"email={self.email}, "
+            f"rol={self.rol.value}"
+        )

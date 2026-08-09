@@ -1,8 +1,7 @@
 from services import perfumes_service
-from exceptions import perfumes
 
 def test_crear_perfume():
-    perfume_id = perfumes_service.crear_perfume("Chanel Nº5", 50, 1)
+    perfume_id = perfumes_service.crear_perfume("Le beau Le parfum", 75, 6, 108)
     print(perfume_id)
 
 def test_crear_perfume_invalido():
@@ -55,7 +54,7 @@ def test_reponer_stock_valor_negativo():
     print(perfumes_service.reponer_stock(2, -5))
 
 if __name__ == "__main__":
-    #test_crear_perfume()
+    test_crear_perfume()
     #test_crear_perfume_invalido()
     #test_obtener_perfumes()
     #test_obtener_perfume_id()
@@ -68,4 +67,4 @@ if __name__ == "__main__":
     #test_reponer_stock_correcto()
     #test_reponer_stock_perfume_invalido()
     #test_reponer_stock_valor_invlaido()
-    test_reponer_stock_valor_negativo()
+    #test_reponer_stock_valor_negativo()

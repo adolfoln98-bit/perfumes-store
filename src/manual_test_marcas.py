@@ -2,7 +2,7 @@ from services import marcas_service
 from exceptions import marcas
 
 def test_crear_marca():
-    marca_id = marcas_service.crear_marca("Versace")
+    marca_id = marcas_service.crear_marca("Jean Paul Gaultier")
     return marca_id
 
 def test_ver_marcas():
@@ -27,8 +27,8 @@ def test_eliminar_marca():
     print(resultado)
 
 if __name__ == "__main__":
-    #test_crear_marca()
+    test_crear_marca()
     #test_ver_marcas()
     #test_actualizar_marca()
-    test_eliminar_marca()
+    #test_eliminar_marca()
     

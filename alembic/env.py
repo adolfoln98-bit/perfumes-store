@@ -13,11 +13,19 @@ config = context.config
 
 load_dotenv()
 
-database_url = os.getenv("DATABASE_URL")
+x_args = context.get_x_argument(
+    as_dictionary=True
+)
+
+if x_args.get("test") == "true":
+    database_url = os.getenv("TEST_DATABASE_URL")
+else:
+    database_url = os.getenv("DATABASE_URL")
+print(f"Base de datos seleccionada: {database_url.rsplit('/', 1)[-1]}")
 
 if database_url is None:
     raise ValueError(
-        "La variable de entorno 'DATABASE_URL' no está definida."
+        "La variable de entorno de la base de datos no está definida."
     )
 
 config.set_main_option("sqlalchemy.url", database_url)
