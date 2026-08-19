@@ -5,6 +5,8 @@ from repositories import usuarios_repository
 from security import password as password_security
 from sqlalchemy.exc import IntegrityError
 
+import models
+
 
 
 def crear_usuario(email, password):
@@ -58,3 +60,29 @@ def login_usuario(email, password):
             raise usuarios.CredencialesInvalidasError("Las credenciales no son correctas")
         
     return usuario
+
+def obtener_usuario_por_id(id_usuario):
+    
+    with get_session() as session:
+        usuario = usuarios_repository.obtener_usuario_por_id(session, id_usuario)
+        
+        if usuario is None:
+            raise usuarios.UsuarioNoEncontradoError("No se ha encontrado ningun usuario")
+    
+    return usuario
+
+def modificar_rol(id_usuario, nuevo_rol):
+    
+    if not isinstance(nuevo_rol, models.RolUsuario):
+        raise usuarios.RolInvalidoError("El rol no es correcto")
+    
+    with get_session() as session:
+        usuario = usuarios_repository.obtener_usuario_por_id(session, id_usuario)
+        
+        if usuario is None:
+            raise usuarios.UsuarioNoEncontradoError("No se ha encontrado ningun usuario")
+        
+        usuarios_repository.modificar_rol(usuario, nuevo_rol)
+        
+        session.flush()
+        session.commit()   

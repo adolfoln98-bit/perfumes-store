@@ -51,3 +51,23 @@ def override_usuario_session(
     )
 
     return test_session
+
+@pytest.fixture
+def override_marca_session(
+    test_session,
+    monkeypatch
+):
+    from contextlib import contextmanager
+    from services import marcas_service
+
+    @contextmanager
+    def override_get_session():
+        yield test_session
+
+    monkeypatch.setattr(
+        marcas_service,
+        "get_session",
+        override_get_session
+    )
+
+    return test_session

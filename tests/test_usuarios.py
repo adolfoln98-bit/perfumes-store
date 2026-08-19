@@ -1,8 +1,10 @@
 import pytest
+from fastapi import HttpException
 
 from services import usuarios_service
-from models import Usuario
+from models import Usuario, RolUsuario
 from security import password as password_security
+from security import dependencies
 from exceptions import usuarios
 from sqlalchemy import select
 
@@ -123,3 +125,38 @@ def test_login_password_invalida(override_usuario_session):
     with pytest.raises(usuarios.CredencialesInvalidasError):
         usuarios_service.login_usuario(email, "wrong_password")
         
+def test_obtener_usuario_por_id(override_usuario_session):
+    
+    email="correo@correo.com"
+    password="abcd1234"
+    
+    id_usuario = usuarios_service.crear_usuario(
+        email,
+        password
+    )
+    usuario = usuarios_service.obtener_usuario_por_id(id_usuario)
+    
+    assert usuario.email == email.strip().lower()
+    assert usuario.rol.value == "user"
+    
+def test_obtener_usuario_por_id_erroneo(override_usuario_session):
+    
+    with pytest.raises(usuarios.UsuarioNoEncontradoError):
+        usuarios_service.obtener_usuario_por_id(0)
+        
+
+def test_obtener_admin_actual(override_usuario_session):
+    
+    email = "test@test.com"
+    password = "1234abcd"
+    
+    id_usuario = usuarios_service.crear_usuario(email, password)
+    
+    usuario = usuarios_service.obtener_usuario_por_id(id_usuario)
+    
+    assert isinstance(usuario.rol, RolUsuario.USER)
+    
+    with pytest.raises(HttpException) as error:
+        dependencies.obtener_admin_actual(usuario_actual=usuario) 
+    
+    assert error.value.status_code == 403

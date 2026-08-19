@@ -39,19 +39,21 @@ def actualizar_marca(id_marca, nuevo_nombre):
         if marca is None:
             raise marcas.MarcaNoEncontradaError(f"No se ha encontrado ninguna marca con el id: {id_marca}")
         try:
-            marca_actualizada = marcas_repository.actualizar_marca(
+            marcas_repository.actualizar_marca(
                 marca, 
                 nuevo_nombre)
             
             session.flush()
-            resultado = marca_actualizada.id, marca_actualizada.nombre
             session.commit()
             
         except IntegrityError:
             session.rollback()
             raise marcas.MarcaDuplicadaError(f"La marca {nuevo_nombre} ya habia sido añadida previamente")
             
-    return resultado
+        with get_session() as session:
+            marca = marcas_repository.obtener_marca_por_id(session, id_marca)
+        
+        return marca
 
 def eliminar_marca(id_marca):
     

@@ -18,3 +18,11 @@ def obtener_usuario_por_email(session, email):
     resultado = session.execute(consulta_email)
     
     return resultado.scalar_one_or_none()
+
+def obtener_usuario_por_id(session, id_usuario):
+    
+    return session.get(Usuario, id_usuario)
+
+def modificar_rol(usuario, nuevo_rol):
+    
+    usuario.rol = nuevo_rol
