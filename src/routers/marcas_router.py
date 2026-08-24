@@ -17,6 +17,7 @@ def crear_marca(
     marca: marcas_schema.MarcaCreate,
     admin_actual = Depends(dependencies.obtener_admin_actual)
     ):
+    
     try:
         id_nueva_marca = marcas_service.crear_marca(marca.nombre)
     
@@ -29,6 +30,7 @@ def crear_marca(
 @marcas_router.get("", status_code=200, response_model=list[marcas_schema.MarcaResponse])
 
 def obtener_marcas():
+    
     return marcas_service.obtener_marcas()
 
 
@@ -52,6 +54,7 @@ def actualizar_marca(
     marca_update: marcas_schema.MarcaUpdate,
     admin_actual = Depends(dependencies.obtener_admin_actual)
 ):
+    
     try:
         marca_actualizada = marcas_service.actualizar_marca(id_marca, marca_update.nombre)
     
@@ -69,6 +72,7 @@ def eliminar_marca(
     id_marca: int,
     admin_actual = Depends(dependencies.obtener_admin_actual)
 ):
+    
     try:
         marca_borrada = marcas_service.eliminar_marca(id_marca)
         

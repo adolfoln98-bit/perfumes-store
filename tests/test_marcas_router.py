@@ -123,13 +123,15 @@ def test_obtener_marca_por_id(override_marca_session):
 
 def test_obtener_marca_inexistente_por_id(override_marca_session):
     
-    response = cliente.get("/api/marcas/999999")
+    id_marca = 123456
+    
+    response = cliente.get(f"/api/marcas/{id_marca}")
     
     assert response.status_code == 404
     
     datos = response.json()
     
-    assert datos["detail"] == "No se ha encontrado ninguna marca con el id: 999999"
+    assert datos["detail"] == f"No se ha encontrado ninguna marca con el id: {id_marca}"
 
 
 def test_admin_actualiza_marca(override_usuario_session, override_marca_session):

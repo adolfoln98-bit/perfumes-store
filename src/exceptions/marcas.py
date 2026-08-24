@@ -3,3 +3,6 @@ class MarcaDuplicadaError(Exception):
     
 class MarcaNoEncontradaError(Exception):
     """Se lanza cuando no se encuentra ninguna marca en la busqueda realizada."""
+
+class MarcaIdInvalidaError(Exception):
+    """Se lanca cuando el id de la marca es invalido"""

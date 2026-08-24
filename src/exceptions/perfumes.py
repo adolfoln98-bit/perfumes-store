@@ -9,3 +9,9 @@ class StockIncorrectoError(Exception):
     
 class CantidadStockIncorrectaError(Exception):
     """Se lanza cuando la nueva cantidad de stock introducida es incorrecta"""
+    
+class CampoActualizacionInvalidoError(Exception):
+    """Se lanza cuando se ha intentado modificar mediante la actualización general un campo que no está permitido"""
+    
+class VolumenInvalidoError(Exception):
+    """Se lanza cuando el volumen tiene in valor invalido"""
