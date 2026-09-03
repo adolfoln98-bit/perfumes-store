@@ -1,5 +1,5 @@
 import pytest
-from fastapi import HttpException
+from fastapi import HTTPException
 
 from services import usuarios_service
 from models import Usuario, RolUsuario
@@ -154,9 +154,9 @@ def test_obtener_admin_actual(override_usuario_session):
     
     usuario = usuarios_service.obtener_usuario_por_id(id_usuario)
     
-    assert isinstance(usuario.rol, RolUsuario.USER)
+    assert usuario.rol == RolUsuario.USER
     
-    with pytest.raises(HttpException) as error:
+    with pytest.raises(HTTPException) as error:
         dependencies.obtener_admin_actual(usuario_actual=usuario) 
     
     assert error.value.status_code == 403
