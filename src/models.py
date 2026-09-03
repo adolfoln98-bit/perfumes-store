@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, Text, String
+from sqlalchemy import CheckConstraint, UniqueConstraint, ForeignKey, Numeric, Text, String, Integer
 from enum import Enum
 from sqlalchemy import Enum as sqlEnum
 
@@ -55,6 +57,7 @@ class Perfume(Base):
     marca_id: Mapped[int] = mapped_column(ForeignKey("marcas.id"),nullable=False) 
     
     marca: Mapped["Marca"] = relationship(back_populates="perfumes")
+    lineas_carrito: Mapped[list["LineaCarrito"]] = relationship(back_populates="perfume", passive_deletes=True)
     
 
     
@@ -100,10 +103,66 @@ class Usuario(Base):
         server_default="user",
         default=RolUsuario.USER
     )
+    carrito: Mapped[Carrito | None] = relationship(back_populates="usuario", uselist=False, passive_deletes=True)
     
     def __repr__(self):
         return (
             f"Id={self.id}, "
             f"email={self.email}, "
             f"rol={self.rol.value}"
+        )
+        
+
+class Carrito(Base):
+    
+    __tablename__ = "carritos"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        )
+    
+    usuario: Mapped["Usuario"] = relationship(back_populates="carrito")
+    lineas_carrito: Mapped[list["LineaCarrito"]] = relationship(back_populates="carrito", passive_deletes=True)
+    
+    def __repr__(self):
+        return(
+            f"Id={self.id}, "
+            f"usuario_id={self.usuario_id}"
+        )
+
+class LineaCarrito(Base):
+    
+    __tablename__ = "lineas_carrito"
+    
+    __table_args__ = (
+            CheckConstraint("cantidad > 0", name="ck_linea_carrito_cantidad_positiva"),
+            UniqueConstraint("carrito_id", "perfume_id", name="uq_lineas_carrito_carrito_perfume")
+        )
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    carrito_id: Mapped[int] = mapped_column(
+        ForeignKey("carritos.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    perfume_id: Mapped[int] = mapped_column(
+        ForeignKey("perfumes.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    cantidad: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+    
+    carrito: Mapped["Carrito"] = relationship(back_populates="lineas_carrito")
+    perfume: Mapped["Perfume"] = relationship(back_populates="lineas_carrito")
+    
+    def __repr__(self):
+        return (
+            f"Id={self.id}, "
+            f"carrito_id={self.carrito_id}, "
+            f"perfume_id={self.perfume_id}, "
+            f"cantidad={self.cantidad}"
         )

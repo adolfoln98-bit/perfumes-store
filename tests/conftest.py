@@ -91,3 +91,43 @@ def override_perfume_session(
     )
 
     return test_session
+
+@pytest.fixture
+def override_carrito_session(
+    test_session,
+    monkeypatch
+):
+    from contextlib import contextmanager
+    from services import carritos_service
+
+    @contextmanager
+    def override_get_session():
+        yield test_session
+
+    monkeypatch.setattr(
+        carritos_service,
+        "get_session",
+        override_get_session
+    )
+
+    return test_session
+
+@pytest.fixture
+def override_linea_carrito_session(
+    test_session,
+    monkeypatch
+):
+    from contextlib import contextmanager
+    from services import linea_carrito_service
+
+    @contextmanager
+    def override_get_session():
+        yield test_session
+
+    monkeypatch.setattr(
+        linea_carrito_service,
+        "get_session",
+        override_get_session
+    )
+
+    return test_session
