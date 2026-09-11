@@ -14,3 +14,6 @@ class LineaCarritoResponse(BaseModel):
 class CarritoResponse(BaseModel):
     id: int = Field(..., gt=0)
     lineas_carrito: list[LineaCarritoResponse]
+
+class ModificarCantidadLineaCarritoRequest(BaseModel):
+    cantidad: int = Field(..., gt=0)

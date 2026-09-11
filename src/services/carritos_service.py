@@ -3,6 +3,7 @@ from repositories import carritos_repository
 from sqlalchemy.exc import IntegrityError
 from psycopg.errors import ForeignKeyViolation
 from exceptions import usuarios as usuarios_exception
+from exceptions import carrito as carrito_exception
 
 import models
 
@@ -33,3 +34,21 @@ def crear_o_obtener_carrito(id_usuario):
         carrito = carritos_repository.obtener_carrito_por_id(session, id_carrito)
         
     return carrito
+
+def _obtener_carrito_por_usuario(session, usuario_id):
+    carrito = carritos_repository.obtener_carrito_por_usuario(session, usuario_id)
+        
+    if not carrito:
+        raise carrito_exception.CarritoNoEncontradoError("El carrito no ha sido encontrado")
+
+    return carrito
+
+
+def obtener_carrito_por_usuario(usuario_id):
+    
+    with get_session() as session:
+        carrito = _obtener_carrito_por_usuario(session, usuario_id)
+            
+        carrito_completo = carritos_repository.obtener_carrito_completo_por_id(session, carrito.id)
+        
+        return carrito_completo

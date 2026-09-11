@@ -26,3 +26,8 @@ def crear_linea_carrito(session, carrito_id, perfume_id, cantidad):
 def aumentar_cantidad(linea_carrito, cantidad):
     linea_carrito.cantidad += cantidad
 
+def modificar_cantidad(linea_carrito, nueva_cantidad):
+    linea_carrito.cantidad = nueva_cantidad
+
+def eliminar_linea_carrito(session, linea_carrito):
+    session.delete(linea_carrito)
