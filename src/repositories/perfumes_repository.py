@@ -47,3 +47,6 @@ def eliminar_perfume(session, perfume):
 
 def reponer_stock(perfume, cantidad):
     perfume.stock += cantidad
+    
+def descontar_stock(perfume, cantidad):
+    perfume.stock-= cantidad

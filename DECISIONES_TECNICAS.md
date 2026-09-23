@@ -193,3 +193,199 @@ Continuar utilizando exclusivamente scripts de pruebas manuales o permitir que c
 Motivo del descarte
 
 Las pruebas manuales requieren intervención del desarrollador y resultan cada vez más costosas conforme aumenta el número de funcionalidades. Por otra parte, permitir que los tests mantengan permanentemente los datos creados introduciría dependencias entre pruebas y haría que sus resultados pudieran variar en función del orden o de ejecuciones anteriores.
+
+DT-011 — Autenticación mediante JWT y OAuth2 Bearer
+
+Decisión
+
+Utilizar autenticación basada en tokens JWT enviados mediante el esquema OAuth2 Bearer.
+
+Motivo
+
+La API necesita identificar al usuario que realiza cada petición sin mantener estado de sesión en el servidor. Los tokens JWT permiten incluir la identidad del usuario en un token firmado que puede verificarse en cada petición protegida.
+
+FastAPI integra este mecanismo mediante OAuth2PasswordBearer, permitiendo recibir el token a través de la cabecera Authorization y centralizar la obtención del usuario autenticado en una dependencia reutilizable.
+
+Las credenciales del usuario se validan únicamente durante el inicio de sesión. A partir de ese momento, las operaciones protegidas utilizan la identidad obtenida del token y no reciben el identificador del usuario desde el cuerpo de la petición.
+
+Alternativas consideradas
+
+Mantener sesiones de usuario almacenadas en el servidor o enviar manualmente el identificador del usuario en cada operación protegida.
+
+Motivo del descarte
+
+Las sesiones de servidor requieren almacenar y gestionar estado adicional. Por otra parte, aceptar directamente el identificador del usuario desde el cliente permitiría intentar operar sobre recursos pertenecientes a otros usuarios y trasladaría al cliente una responsabilidad que debe resolver el sistema de autenticación.
+
+DT-012 — Autorización mediante roles de usuario
+
+Decisión
+
+Definir roles USER y ADMIN y centralizar las comprobaciones de autorización mediante dependencias de FastAPI.
+
+Motivo
+
+No todas las operaciones de la API deben estar disponibles para cualquier usuario autenticado. Las operaciones administrativas, como determinadas modificaciones sobre usuarios o catálogo, requieren distinguir entre usuarios normales y administradores.
+
+Centralizar esta comprobación en dependencias permite reutilizar la misma política de autorización en distintos endpoints y evita repetir lógica de permisos dentro de cada router.
+
+Alternativas consideradas
+
+Comprobar manualmente el rol dentro de cada endpoint o implementar permisos más granulares desde el inicio.
+
+Motivo del descarte
+
+Repetir las comprobaciones en cada endpoint aumentaría la duplicación y el riesgo de aplicar reglas diferentes para operaciones equivalentes. Un sistema de permisos más granular aportaría flexibilidad, pero introduciría complejidad que los requisitos actuales no necesitan.
+
+DT-013 — Creación diferida del carrito
+
+Decisión
+
+Crear el carrito de un usuario únicamente cuando este realiza por primera vez una operación que requiere su existencia.
+
+Motivo
+
+No todos los usuarios registrados necesitan utilizar un carrito. Crear automáticamente un carrito durante el registro generaría registros que podrían no utilizarse nunca y acoplaría innecesariamente el proceso de creación de usuarios con la funcionalidad de compra.
+
+El carrito se crea de forma diferida cuando un caso de uso lo necesita, por ejemplo al añadir el primer perfume. Una vez creado, el carrito permanece asociado al usuario incluso cuando se eliminan todas sus líneas, ya que un carrito vacío sigue siendo un estado válido.
+
+Alternativas consideradas
+
+Crear automáticamente un carrito para cada usuario durante el registro y eliminar el carrito cuando se elimine su última línea.
+
+Motivo del descarte
+
+La creación automática introduce datos y lógica innecesarios antes de que exista una necesidad real. Por otra parte, eliminar un carrito cuando queda vacío obligaría a recrearlo posteriormente y convertiría un estado perfectamente válido, el carrito vacío, en ausencia de carrito.
+
+DT-014 — Modelado de la relación entre carrito y perfume mediante LineaCarrito
+
+Decisión
+
+Representar la relación entre Carrito y Perfume mediante una entidad intermedia LineaCarrito.
+
+Motivo
+
+Un carrito puede contener varios perfumes y un mismo perfume puede aparecer en los carritos de distintos usuarios, por lo que existe conceptualmente una relación muchos a muchos.
+
+Esta relación necesita además almacenar información propia, concretamente la cantidad de unidades de cada perfume. LineaCarrito permite representar esta información y establece una restricción UNIQUE sobre la combinación carrito_id y perfume_id para impedir que un mismo perfume aparezca duplicado en un carrito.
+
+Alternativas consideradas
+
+Crear una relación muchos a muchos sin entidad intermedia explícita o almacenar directamente una colección de identificadores de perfumes dentro del carrito.
+
+Motivo del descarte
+
+Una tabla de asociación sin entidad propia no representaría adecuadamente atributos como cantidad. Almacenar colecciones de identificadores dentro de una columna rompería el modelo relacional y dificultaría las consultas, restricciones e integridad referencial.
+
+DT-015 — Separación entre gestión del carrito y modificación de stock
+
+Decisión
+
+No modificar el stock de un perfume cuando se añade, modifica o elimina una línea del carrito.
+
+Motivo
+
+El carrito representa la intención de compra del usuario, pero no una compra confirmada. Añadir unidades al carrito no garantiza que el usuario vaya a finalizar el pedido.
+
+Por este motivo, las operaciones POST, PATCH y DELETE sobre el carrito únicamente modifican LineaCarrito. El stock del perfume permanece sin cambios durante estas operaciones.
+
+La modificación real del stock se realizará posteriormente durante el proceso de confirmación del pedido, donde será posible validar nuevamente la disponibilidad y ejecutar la operación dentro de una transacción.
+
+Alternativas consideradas
+
+Reducir el stock al añadir productos al carrito y restaurarlo cuando se eliminan.
+
+Motivo del descarte
+
+Este enfoque convertiría el carrito en un mecanismo de reserva de inventario. Los usuarios podrían bloquear unidades simplemente manteniéndolas en sus carritos y sería necesario introducir mecanismos adicionales de expiración y liberación de reservas.
+
+Esta complejidad no resulta necesaria para los requisitos actuales del proyecto.
+
+DT-016 — Semántica de las operaciones sobre cantidades del carrito
+
+Decisión
+
+Utilizar POST para añadir unidades de un perfume al carrito, PATCH para establecer una cantidad final y DELETE para eliminar completamente el perfume del carrito.
+
+Motivo
+
+Cada operación representa una intención diferente.
+
+POST permite añadir un perfume al carrito y, si ya existe una línea para ese perfume, incrementar su cantidad.
+
+PATCH representa una modificación parcial del recurso existente, por lo que la cantidad recibida se interpreta como el nuevo valor absoluto de la línea y no como un incremento o decremento.
+
+DELETE elimina completamente la LineaCarrito correspondiente.
+
+La cantidad de una línea debe ser siempre mayor que cero. Por tanto, establecer cantidad cero no se utiliza como mecanismo de eliminación.
+
+Alternativas consideradas
+
+Utilizar PATCH con incrementos positivos o negativos, o interpretar cantidad igual a cero como eliminación de la línea.
+
+Motivo del descarte
+
+Los incrementos relativos hacen que el significado de la petición dependa del estado previo del carrito y dificultan razonar sobre el resultado final de una operación.
+
+Utilizar cantidad cero para eliminar introduciría además dos formas diferentes de expresar la misma operación y entraría en conflicto con la regla de dominio que establece que toda LineaCarrito existente debe tener una cantidad mayor que cero.
+
+DT-017 — Una única transacción para casos de uso compuestos
+
+Decisión
+
+Ejecutar dentro de una misma sesión y transacción todas las operaciones de persistencia que forman parte de un mismo caso de uso.
+
+Motivo
+
+Algunas operaciones necesitan coordinar varios repositorios. Por ejemplo, añadir un perfume al carrito puede requerir obtener o crear el carrito, comprobar el perfume, consultar una línea existente y crearla o modificarla.
+
+Todas estas acciones forman una única operación de negocio y deben confirmarse o revertirse conjuntamente. Para conseguirlo, los helpers internos reutilizables reciben la sesión existente en lugar de abrir sesiones independientes.
+
+Alternativas consideradas
+
+Permitir que cada servicio auxiliar o repositorio abra su propia sesión y confirme sus cambios de manera independiente.
+
+Motivo del descarte
+
+Dividir un caso de uso entre varias transacciones permitiría que una parte de la operación quedase confirmada aunque otra fallase posteriormente. Esto rompería la atomicidad y podría dejar la base de datos en un estado parcialmente actualizado.
+
+DT-018 — Recuperación explícita del grafo completo mediante eager loading
+
+Decisión
+
+Utilizar eager loading cuando un caso de uso necesita devolver el carrito completo con sus líneas, perfumes y marcas.
+
+Motivo
+
+La respuesta del carrito contiene un grafo de objetos formado por Carrito, LineaCarrito, Perfume y Marca. Estas relaciones deben estar disponibles mientras la sesión está activa para que posteriormente FastAPI y Pydantic puedan construir correctamente la respuesta.
+
+La consulta específica del carrito completo utiliza joinedload para recuperar explícitamente las relaciones necesarias. Cuando se carga una colección mediante joinedload, el resultado se procesa con unique() antes de obtener la entidad para evitar duplicados producidos por el JOIN.
+
+Alternativas consideradas
+
+Depender exclusivamente de la carga diferida de relaciones o realizar consultas independientes desde el router durante la serialización.
+
+Motivo del descarte
+
+La carga diferida puede intentar acceder a relaciones cuando la sesión ya se encuentra cerrada y hace menos explícito el coste de las consultas realizadas. Consultar relaciones desde el router mezclaría responsabilidades de presentación y persistencia.
+
+DT-019 — Separación entre excepciones de dominio y respuestas HTTP
+
+Decisión
+
+Representar los errores de negocio mediante excepciones propias de la aplicación y traducirlas a respuestas HTTP únicamente en la capa de routers.
+
+Motivo
+
+La lógica de negocio no debe depender del protocolo HTTP. Los servicios expresan situaciones como recurso no encontrado, stock insuficiente o datos duplicados mediante excepciones de dominio específicas.
+
+Los routers capturan estas excepciones y deciden su representación HTTP, por ejemplo 404 para recursos no encontrados o 409 para conflictos relacionados con el estado actual del recurso.
+
+Esta separación permite reutilizar los servicios fuera de un endpoint HTTP y mantiene diferenciadas las responsabilidades de negocio y transporte.
+
+Alternativas consideradas
+
+Lanzar HTTPException directamente desde los servicios o repositorios.
+
+Motivo del descarte
+
+Introducir HTTPException en las capas internas acoplaría la lógica de negocio a FastAPI y al protocolo HTTP. Además, dificultaría reutilizar los mismos casos de uso desde otros contextos y mezclaría las reglas del dominio con decisiones propias de la interfaz de la API.

@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import CheckConstraint, UniqueConstraint, ForeignKey, Numeric, Text, String, Integer
+from sqlalchemy import (
+    CheckConstraint,
+    UniqueConstraint,
+    ForeignKey,
+    Numeric,
+    Text,
+    String,
+    Integer,
+    DateTime,
+    func
+)
 from enum import Enum
 from sqlalchemy import Enum as sqlEnum
 
 from decimal import Decimal
+from datetime import datetime
 
 class Base(DeclarativeBase):
     pass
@@ -58,7 +69,7 @@ class Perfume(Base):
     
     marca: Mapped["Marca"] = relationship(back_populates="perfumes")
     lineas_carrito: Mapped[list["LineaCarrito"]] = relationship(back_populates="perfume", passive_deletes=True)
-    
+    lineas_pedido: Mapped[list["LineaPedido"]] = relationship(back_populates="perfume")
 
     
     def __repr__(self):
@@ -104,6 +115,7 @@ class Usuario(Base):
         default=RolUsuario.USER
     )
     carrito: Mapped[Carrito | None] = relationship(back_populates="usuario", uselist=False, passive_deletes=True)
+    pedidos: Mapped[list[Pedido]] = relationship(back_populates="usuario")
     
     def __repr__(self):
         return (
@@ -165,4 +177,71 @@ class LineaCarrito(Base):
             f"carrito_id={self.carrito_id}, "
             f"perfume_id={self.perfume_id}, "
             f"cantidad={self.cantidad}"
+        )
+
+class Pedido(Base):
+    
+    __tablename__ = "pedidos"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id"), 
+        nullable=False
+        )
+    
+    fecha_creacion: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+        )
+    
+    usuario: Mapped["Usuario"] = relationship(back_populates="pedidos")
+    lineas_pedido: Mapped[list["LineaPedido"]] = relationship(back_populates="pedido")
+    
+    def __repr__(self):
+        return(
+            f"Id={self.id}, "
+            f"usuario_id={self.usuario_id}, "
+            f"fecha_creacion={self.fecha_creacion}"
+        )
+
+class LineaPedido(Base):
+    
+    __tablename__ = "lineas_pedido"
+
+    __table_args__ = (
+            CheckConstraint("cantidad > 0", name="ck_linea_pedido_cantidad_positiva"),
+            CheckConstraint("precio_unidad > 0", name="ck_linea_pedido_precio_unidad_positiva")
+        )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pedido_id: Mapped[int] = mapped_column(
+        ForeignKey("pedidos.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    perfume_id: Mapped[int] = mapped_column(
+        ForeignKey("perfumes.id"),
+        nullable=False
+    )
+    nombre_perfume: Mapped[str] = mapped_column(
+        Text,
+        nullable=False
+    )
+    cantidad: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+    precio_unidad: Mapped[Decimal] = mapped_column(
+        Numeric(10,2),
+        nullable=False
+    )
+    
+    pedido: Mapped["Pedido"] = relationship(back_populates="lineas_pedido")
+    perfume: Mapped["Perfume"] = relationship(back_populates="lineas_pedido")
+    
+    def __repr__(self):
+        return(
+            f"Id={self.id}, "
+            f"pedido_id={self.pedido_id}, "
+            f"perfume_id={self.perfume_id}, "
+            f"cantidad={self.cantidad}, "
+            f"precio_unidad={self.precio_unidad}"
         )
