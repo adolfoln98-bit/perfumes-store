@@ -6,6 +6,7 @@ from services import pedidos_service
 
 from exceptions import carrito as carrito_exception
 from exceptions import linea_carrito as linea_carrito_exception
+from exceptions import pedidos as pedidos_exception
 
 pedidos_router = APIRouter(
     prefix="/pedidos",
@@ -57,4 +58,21 @@ def obtener_pedidos(
             }
         )
     return lista_respuesta
+
+@pedidos_router.get("/{pedido_id}", status_code=200, response_model=pedidos_schema.PedidoResponse)
+def recuperar_pedido_por_id(
+    pedido_id: int,
+    usuario = Depends(dependencies.obtener_usuario_actual)
+):
+    try:
+        pedido, precio_total = pedidos_service.recuperar_pedido_por_id(usuario.id, pedido_id)
+    except pedidos_exception.PedidoNoEncontradoError as error:
+        raise HTTPException(status_code=404, detail=str(error))
     
+    return {
+                "id": pedido.id,
+                "usuario_id": pedido.usuario_id,
+                "fecha_creacion": pedido.fecha_creacion,
+                "lineas_pedido": pedido.lineas_pedido,
+                "precio_total": precio_total        
+    }

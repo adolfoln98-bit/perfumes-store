@@ -255,3 +255,103 @@ def test_recuperar_pedidos(
         assert Decimal(pedido_antiguo["precio_total"]) == Decimal(linea_antigua["precio_unidad"]) * cantidad_perfume1
     finally:
         del main.app.dependency_overrides[dependencies.obtener_usuario_actual]
+
+
+def test_recuperar_pedido_por_id(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_carrito_session,
+    override_linea_carrito_session,
+    override_pedidos_session
+):
+    usuario = obtener_usuario(override_usuario_session, "user@test.com")
+    marca = obtener_objeto_marca(override_marca_session, "test")
+    perfume = obtener_perfume(override_perfume_session, marca.id, 150)
+
+    
+    cantidad_perfume = 15
+    agregar_perfume_al_carrito(override_linea_carrito_session, usuario.id, perfume.id, cantidad_perfume)
+    pedido, _ = pedidos_service.realizar_pedido(usuario.id)
+    
+    def obtener_usuario_actual():
+        return usuario
+    main.app.dependency_overrides[dependencies.obtener_usuario_actual] = obtener_usuario_actual
+    
+    try:
+        response = cliente.get(f"/api/pedidos/{pedido.id}")
+        
+        assert response.status_code == 200
+
+        respuesta_pedido = response.json()
+        
+        assert respuesta_pedido["id"] == pedido.id
+        assert respuesta_pedido["usuario_id"] == usuario.id
+        
+        linea_pedido = respuesta_pedido["lineas_pedido"][0]
+        assert linea_pedido["perfume_id"] == perfume.id
+        assert linea_pedido["cantidad"] == cantidad_perfume
+        assert Decimal(respuesta_pedido["precio_total"]) == Decimal(linea_pedido["precio_unidad"]) * cantidad_perfume
+    finally:
+        del  main.app.dependency_overrides[dependencies.obtener_usuario_actual]
+
+
+
+def test_recuperar_pedido_por_id_pedido_inexistente(
+    override_usuario_session,
+    override_pedidos_session
+):
+    usuario = obtener_usuario(override_usuario_session, "user@test.com")
+    pedido_id = 12445
+    
+    def obtener_usuario_actual():
+        return usuario
+    main.app.dependency_overrides[dependencies.obtener_usuario_actual] = obtener_usuario_actual
+    
+    try:
+        response = cliente.get(f"/api/pedidos/{pedido_id}")
+        
+        assert response.status_code == 404
+        
+        datos = response.json()
+        
+        assert datos["detail"] == "El pedido no ha sido encontrado"
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_usuario_actual]
+
+
+
+def test_recuperar_pedido_por_id_usuario_incorrecto(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_carrito_session,
+    override_linea_carrito_session,
+    override_pedidos_session
+):
+    usuario1 = obtener_usuario(override_usuario_session, "user1@test.com")
+    usuario2 = obtener_usuario(override_usuario_session, "user2@test.com")
+    marca = obtener_objeto_marca(override_marca_session, "test")
+    perfume = obtener_perfume(override_perfume_session, marca.id, 150)
+
+    
+    cantidad_perfume = 15
+  
+    agregar_perfume_al_carrito(override_linea_carrito_session, usuario1.id, perfume.id, cantidad_perfume)
+    pedido, _ = pedidos_service.realizar_pedido(usuario1.id)
+    
+    def obtener_usuario_actual():
+            return usuario2
+    main.app.dependency_overrides[dependencies.obtener_usuario_actual] = obtener_usuario_actual
+    
+    try:
+        response = cliente.get(f"/api/pedidos/{pedido.id}")
+        
+        assert response.status_code == 404
+        
+        datos = response.json()
+        
+        assert datos["detail"] == "El pedido no ha sido encontrado"
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_usuario_actual]
+        

@@ -18,6 +18,7 @@ from repositories import(
 
 from exceptions import carrito as carrito_exception
 from exceptions import linea_carrito as linea_carrito_exception
+from exceptions import pedidos as pedidos_exception
 
 from sqlalchemy import select
 
@@ -218,3 +219,70 @@ def test_recuperar_pedido_usuario_sin_pedidos(
     pedidos = pedidos_service.recuperar_pedidos_por_usuario(usuario.id)
     
     assert pedidos == []
+
+
+def test_recuperar_pedido_por_id(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_carrito_session,
+    override_linea_carrito_session,
+    override_pedidos_session
+):
+    usuario = crear_usuario(override_usuario_session, "user@test.com")
+    marca = obtener_objeto_marca(override_marca_session, "test")
+    perfume = obtener_perfume(override_perfume_session, marca.id, 150)
+
+    
+    cantidad_perfume = 15
+  
+    agregar_perfume_al_carrito(override_linea_carrito_session, usuario.id, perfume.id, cantidad_perfume)
+    pedido, _ = pedidos_service.realizar_pedido(usuario.id)
+    
+    
+    pedido_recuperado, precio_total_pedido_realizado = pedidos_service.recuperar_pedido_por_id(usuario.id, pedido.id)
+    
+    assert pedido_recuperado.id == pedido.id
+    assert pedido_recuperado.usuario_id == usuario.id
+    
+    linea_pedido = pedido_recuperado.lineas_pedido[0]
+    assert linea_pedido.perfume_id == perfume.id
+    assert precio_total_pedido_realizado == linea_pedido.precio_unidad * cantidad_perfume
+
+
+def test_recuperar_pedido_por_id_pedido_inexistente(
+    override_usuario_session,
+    override_pedidos_session
+):
+    usuario = crear_usuario(override_usuario_session, "user@test.com")
+    pedido_id = 12445
+    
+    with pytest.raises(pedidos_exception.PedidoNoEncontradoError) as error:
+        pedidos_service.recuperar_pedido_por_id(usuario.id, pedido_id)
+    
+    assert str(error.value) == "El pedido no ha sido encontrado"
+    
+
+def test_recuperar_pedido_por_id_usuario_incorrecto(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_carrito_session,
+    override_linea_carrito_session,
+    override_pedidos_session
+):
+    usuario1 = crear_usuario(override_usuario_session, "user1@test.com")
+    usuario2 = crear_usuario(override_usuario_session, "user2@test.com")
+    marca = obtener_objeto_marca(override_marca_session, "test")
+    perfume = obtener_perfume(override_perfume_session, marca.id, 150)
+
+    
+    cantidad_perfume = 15
+  
+    agregar_perfume_al_carrito(override_linea_carrito_session, usuario1.id, perfume.id, cantidad_perfume)
+    pedido, _ = pedidos_service.realizar_pedido(usuario1.id)
+    
+    with pytest.raises(pedidos_exception.PedidoNoEncontradoError) as error:
+        pedidos_service.recuperar_pedido_por_id(usuario2.id, pedido.id)
+    
+    assert str(error.value) == "El pedido no ha sido encontrado"

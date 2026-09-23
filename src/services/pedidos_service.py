@@ -11,6 +11,7 @@ from repositories import (
 )
 from exceptions import carrito as carrito_exception
 from exceptions import linea_carrito as linea_carrito_exception
+from exceptions import pedidos as pedidos_exception
 
 def _calcular_precio_total(pedido):
     
@@ -78,3 +79,15 @@ def recuperar_pedidos_por_usuario(usuario_id):
             )
             
     return lista_pedidos_completa
+
+
+def recuperar_pedido_por_id(usuario_id, pedido_id):
+    
+    with get_session() as session:
+        pedido = pedidos_repository.obtener_pedido_completo_por_id(session, pedido_id)
+        
+        if (pedido is None) or (pedido.usuario_id != usuario_id):
+            raise pedidos_exception.PedidoNoEncontradoError("El pedido no ha sido encontrado")
+        precio_total = _calcular_precio_total(pedido)
+        
+    return pedido, precio_total
