@@ -1,5 +1,6 @@
 import models
 import pytest
+from decimal import Decimal
 
 from services import(
     usuarios_service,
@@ -286,3 +287,39 @@ def test_recuperar_pedido_por_id_usuario_incorrecto(
         pedidos_service.recuperar_pedido_por_id(usuario2.id, pedido.id)
     
     assert str(error.value) == "El pedido no ha sido encontrado"
+
+
+def test_crear_pedido_perfume_descontado(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_carrito_session,
+    override_linea_carrito_session,
+    override_pedidos_session
+):
+    usuario = crear_usuario(override_usuario_session, "user@test.com")
+    
+    marca = obtener_objeto_marca(override_marca_session, "test")
+    
+    perfume = obtener_perfume(override_perfume_session, marca.id, 150)
+    descuento = 50
+    perfumes_service.administrar_descuento(perfume.id, descuento)
+    
+    #precio unidad es de 50 de modo que el 50% es 25
+    precio_unidad = Decimal("25.00")
+    
+    
+    cantidad = 15
+    
+    agregar_perfume_al_carrito(override_linea_carrito_session, usuario.id, perfume.id, cantidad)
+    
+    pedido, precio_total = pedidos_service.realizar_pedido(usuario.id)
+    
+
+    linea_pedido = pedido.lineas_pedido[0]
+
+    assert linea_pedido.precio_unidad == precio_unidad
+   
+    
+    assert precio_total == cantidad * precio_unidad
+    

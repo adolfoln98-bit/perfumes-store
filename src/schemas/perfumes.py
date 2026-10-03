@@ -18,6 +18,8 @@ class PerfumeResponse(PerfumeBase):
     id: int = Field(..., gt=0)
     stock: int = Field(..., ge=0)
     marca: marcas.MarcaResponse
+    descuento: Optional[int] = Field(None, gt=0, lt=100)
+    precio_final: Decimal = Field(..., gt=0)
 
 class PerfumeUpdate(BaseModel):
     nombre: Optional[str] = None
@@ -42,3 +44,7 @@ class PerfumeUpdate(BaseModel):
 
 class StockReposicion(BaseModel):
     cantidad: int = Field(..., gt=0)
+
+
+class AdministrarDescuento(BaseModel):
+    descuento: int | None = Field(..., gt=0, lt=100)

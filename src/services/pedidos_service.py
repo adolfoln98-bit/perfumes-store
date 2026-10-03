@@ -48,7 +48,7 @@ def realizar_pedido(usuario_id):
                     linea_carrito.perfume_id,
                     linea_carrito.perfume.nombre,
                     linea_carrito.cantidad,
-                    linea_carrito.perfume.precio
+                    linea_carrito.perfume.precio_final
                 )
                 perfumes_repository.descontar_stock(linea_carrito.perfume, linea_carrito.cantidad)
             

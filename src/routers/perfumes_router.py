@@ -6,6 +6,8 @@ from exceptions import perfumes as perfumes_exception
 from exceptions import marcas as marcas_exception
 from security import dependencies
 
+from decimal import Decimal
+
 perfumes_router = APIRouter(
     prefix="/perfumes",
     tags=["perfumes"]
@@ -33,9 +35,30 @@ def crear_perfume(
 
 @perfumes_router.get("", status_code=200, response_model=list[perfumes_schema.PerfumeResponse])
 
-def obtener_perfumes():
+def obtener_perfumes(
+    nombre_marca: str = None,
+    precio_min: Decimal = None,
+    precio_max: Decimal = None,
+    ordenar_por: str = "marca",
+    direccion: str = "asc"
+):
+    try:
+        perfumes = perfumes_service.obtener_perfumes(
+            nombre_marca=nombre_marca,
+            precio_min=precio_min,
+            precio_max=precio_max,
+            ordenar_por=ordenar_por,
+            direccion=direccion
+        )
+        
+    except (
+        perfumes_exception.FiltroPrecioInvalidoError,
+        perfumes_exception.CriterioDeOrdenacionInvalidaError,
+        perfumes_exception.DireccionDeOrdenacionInvalidaError
+        ) as error:
+        raise HTTPException(status_code=422, detail=str(error))
     
-    return perfumes_service.obtener_perfumes()
+    return perfumes
 
 
 @perfumes_router.get("/{id_perfume}", status_code=200, response_model=perfumes_schema.PerfumeResponse)
@@ -102,3 +125,22 @@ def eliminar_perfume(
         raise HTTPException(status_code=404, detail=str(error))
     
     return perfume_borrado
+
+
+@perfumes_router.patch("/{id_perfume}/descuento", status_code=200, response_model=perfumes_schema.PerfumeResponse)
+
+def administrar_descuento(
+    id_perfume: int,
+    datos_descuento: perfumes_schema.AdministrarDescuento,
+    admin_actual = Depends(dependencies.obtener_admin_actual)
+):
+    try:
+        perfume = perfumes_service.administrar_descuento(id_perfume, datos_descuento.descuento)
+        
+    except perfumes_exception.DescuentoInvalidoError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    
+    except perfumes_exception.PerfumeNoEncontradoError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    
+    return perfume

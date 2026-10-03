@@ -29,6 +29,24 @@ def obtener_objeto_marca(override_marca_session, nombre_marca):
     id_marca = marcas_service.crear_marca(nombre_marca)
     return marcas_service.obtener_marca_por_id(id_marca)
 
+def obtener_perfume_precio(override_perfume_session, id_marca, precio):
+    datos_perfume = {
+            "nombre": "perfume",
+            "volumen_ml": 50,
+            "marca_id": id_marca,
+            "precio": precio,
+            "stock": 10
+        }
+    perfume_id = perfumes_service.crear_perfume(
+            datos_perfume["nombre"],
+            datos_perfume["volumen_ml"],
+            datos_perfume["marca_id"],
+            datos_perfume["precio"],
+            datos_perfume["stock"]
+            )
+    
+    return override_perfume_session.get(models.Perfume, perfume_id)
+
 
 def test_crear_perfume(
     override_usuario_session,
@@ -794,6 +812,275 @@ def test_no_admin_intenta_manipular_bdd(
         resultado = override_perfume_session.execute(consulta)
                 
         assert len(resultado.scalars().all()) == 0
+        
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_usuario_actual]
+
+
+def test_obtener_perfumes_filtrados(
+    override_marca_session,
+    override_perfume_session
+):
+    marca1 = obtener_objeto_marca(override_marca_session, "Dior")
+    marca2 = obtener_objeto_marca(override_marca_session, "Chanel")
+    
+    obtener_perfume_precio(override_perfume_session, marca1.id, 10)
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca1.id, 47)
+    perfume2 = obtener_perfume_precio(override_perfume_session, marca1.id, 50)
+    obtener_perfume_precio(override_perfume_session, marca1.id, 70)
+    obtener_perfume_precio(override_perfume_session, marca2.id, 47)
+    obtener_perfume_precio(override_perfume_session, marca2.id, 70)
+    
+    response = cliente.get("/api/perfumes?nombre_marca=diO&precio_min=45&precio_max=50")
+    
+    assert response.status_code == 200
+    
+    datos = response.json()
+    
+    assert len(datos) == 2
+    
+    perfumes_ids = [perfume["id"] for perfume in datos]
+    assert perfume1.id in perfumes_ids
+    assert perfume2.id in perfumes_ids
+
+def test_obtener_perfumes_rango_precio_invalido(
+    override_perfume_session
+):
+    response = cliente.get("/api/perfumes?precio_min=45&precio_max=10")
+    
+    assert response.status_code == 422
+    
+    datos = response.json()
+    
+    assert datos["detail"] == "El precio minimo debe ser menor que el maximo"
+
+
+def test_obtener_perfumes_ordenados_por_precio(
+    override_marca_session,
+    override_perfume_session
+):
+    marca1 = obtener_objeto_marca(override_marca_session, "Dior")
+
+    
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca1.id, 47)
+    perfume2 = obtener_perfume_precio(override_perfume_session, marca1.id, 17)
+    perfume3 = obtener_perfume_precio(override_perfume_session, marca1.id, 50)
+
+    response = cliente.get("/api/perfumes?ordenar_por=precio&direccion=desc")
+    
+    assert response.status_code == 200
+    
+    datos = response.json()
+    
+    assert datos[0]["id"] == perfume3.id
+    assert datos[1]["id"] == perfume1.id
+    assert datos[2]["id"] == perfume2.id
+
+
+def test_obtener_perfumes_criterio_ordenacion_invalido():    
+    response = cliente.get("/api/perfumes?ordenar_por=stock")
+    
+    assert response.status_code == 422
+    
+    datos = response.json()
+    
+    assert datos["detail"] == "Criterio de ordenación inválido"
+
+
+def test_obtener_perfumes_direccion_ordenacion_invalida():    
+    response = cliente.get("/api/perfumes?direccion=izquierda")
+    
+    assert response.status_code == 422
+    
+    datos = response.json()
+    
+    assert datos["detail"] == "Dirección de ordenación inválida"
+    
+
+def test_perfume_con_descuento(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session
+    ):
+    admin = usuario_admin(override_usuario_session)
+    
+    marca = obtener_objeto_marca(override_marca_session, "test1")
+
+    perfume = {
+        "nombre": "perfume1",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": Decimal("100.00"),
+        "stock": 100
+    }
+    
+    id_perfume = perfumes_service.crear_perfume(
+        perfume["nombre"],
+        perfume["volumen_ml"],
+        perfume["marca_id"],
+        perfume["precio"],
+        perfume["stock"]
+        )
+    
+    descuento = 20
+    
+    def obtener_admin():
+        return admin
+    
+    main.app.dependency_overrides[dependencies.obtener_admin_actual] = obtener_admin
+    
+    try:
+        response = cliente.patch(f"/api/perfumes/{id_perfume}/descuento", json={
+            "descuento": descuento
+        })
+    
+        assert response.status_code == 200
+    
+        datos = response.json()
+    
+        assert datos["descuento"] == descuento
+        assert Decimal(datos["precio_final"]) == Decimal("80.00")
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_admin_actual]
+
+
+def test_quitar_descuento(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session
+    ):
+    admin = usuario_admin(override_usuario_session)
+    
+    marca = obtener_objeto_marca(override_marca_session, "test1")
+
+    perfume = {
+        "nombre": "perfume1",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": Decimal("100.00"),
+        "stock": 100
+    }
+    
+    id_perfume = perfumes_service.crear_perfume(
+        perfume["nombre"],
+        perfume["volumen_ml"],
+        perfume["marca_id"],
+        perfume["precio"],
+        perfume["stock"]
+        )
+    
+    perfumes_service.administrar_descuento(id_perfume, 20)
+    descuento = None
+    
+    def obtener_admin():
+        return admin
+    
+    main.app.dependency_overrides[dependencies.obtener_admin_actual] = obtener_admin
+    
+    try:
+        response = cliente.patch(f"/api/perfumes/{id_perfume}/descuento", json={
+            "descuento": descuento
+        })
+    
+        assert response.status_code == 200
+    
+        datos = response.json()
+    
+        assert datos["descuento"] is None
+        assert Decimal(datos["precio_final"]) == Decimal("100.00")
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_admin_actual]
+    
+
+def test_descuento_invalido(
+    override_usuario_session,
+    override_perfume_session
+    ):
+    admin = usuario_admin(override_usuario_session)
+    id_perfume = 1344
+    
+    descuento = -20
+    
+    def obtener_admin():
+        return admin
+    
+    main.app.dependency_overrides[dependencies.obtener_admin_actual] = obtener_admin
+    
+    try:
+        response = cliente.patch(f"/api/perfumes/{id_perfume}/descuento", json={
+            "descuento": descuento
+        })
+    
+        assert response.status_code == 422
+    
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_admin_actual]
+
+def test_descuento_perfume_inexistente(
+    override_usuario_session,
+    override_perfume_session
+    ):
+    admin = usuario_admin(override_usuario_session)
+    id_perfume = 1344
+    
+    descuento = 20
+    
+    def obtener_admin():
+        return admin
+    
+    main.app.dependency_overrides[dependencies.obtener_admin_actual] = obtener_admin
+    
+    try:
+        response = cliente.patch(f"/api/perfumes/{id_perfume}/descuento", json={
+            "descuento": descuento
+        })
+    
+        assert response.status_code == 404
+    
+    finally:
+        del main.app.dependency_overrides[dependencies.obtener_admin_actual]
+
+def test_no_admin_intenta_agregar_descuento(
+    override_usuario_session,
+    override_perfume_session,
+    override_marca_session
+):
+    usuario = crear_usuario(override_usuario_session, "user@test.com")
+    
+    marca = obtener_objeto_marca(override_marca_session, "test")
+    
+    perfume = {
+        "nombre": "perfume1",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": 50,
+        "stock": 19
+    }
+    id_perfume = perfumes_service.crear_perfume(
+        perfume["nombre"],
+        perfume["volumen_ml"],
+        perfume["marca_id"],
+        perfume["precio"],
+        perfume["stock"]
+        )
+    descuento = 20
+    
+    def obtener_usuario():
+        return usuario
+    
+    main.app.dependency_overrides[dependencies.obtener_usuario_actual] = obtener_usuario
+    
+    try:
+        response = cliente.patch(f"/api/perfumes/{id_perfume}/descuento", json={
+                "descuento": descuento
+            })
+        
+        assert response.status_code == 403
+        
+        datos = response.json()
+        
+        assert datos["detail"] == "No tienes los permisos necesarios"
+        
         
     finally:
         del main.app.dependency_overrides[dependencies.obtener_usuario_actual]

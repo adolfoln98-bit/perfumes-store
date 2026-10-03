@@ -15,3 +15,15 @@ class CampoActualizacionInvalidoError(Exception):
     
 class VolumenInvalidoError(Exception):
     """Se lanza cuando el volumen tiene in valor invalido"""
+
+class FiltroPrecioInvalidoError(Exception):
+    """Se lanza cuando el valor del filtro de precio minimo es mayor el valor de precio maximo"""
+
+class CriterioDeOrdenacionInvalidaError(Exception):
+    """Se lanza cuando se usa un filtro de busqueda invalido"""
+
+class DireccionDeOrdenacionInvalidaError(Exception):
+    """Se lanza cuando la direccion de ordenacion no es valida"""
+
+class DescuentoInvalidoError(Exception):
+    """Se lanza cuando el descuento introducido es mayor a 100 o menor a 0"""

@@ -15,7 +15,7 @@ from sqlalchemy import (
 from enum import Enum
 from sqlalchemy import Enum as sqlEnum
 
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 
 class Base(DeclarativeBase):
@@ -46,6 +46,7 @@ class Perfume(Base):
     __table_args__ = (
         CheckConstraint("precio > 0", name="ck_perfumes_precio_positivo"),
         CheckConstraint("stock >=0", name="ck_perfumes_stock_no_negativo"),
+        CheckConstraint("descuento is null or (descuento > 0 and descuento < 100)", name="ck_perfumes_descuento_valido"),
     )
         
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -65,7 +66,9 @@ class Perfume(Base):
         nullable=False
     )
     
-    marca_id: Mapped[int] = mapped_column(ForeignKey("marcas.id"),nullable=False) 
+    marca_id: Mapped[int] = mapped_column(ForeignKey("marcas.id"),nullable=False)
+    
+    descuento: Mapped[int | None] = mapped_column()
     
     marca: Mapped["Marca"] = relationship(back_populates="perfumes")
     lineas_carrito: Mapped[list["LineaCarrito"]] = relationship(back_populates="perfume", passive_deletes=True)
@@ -79,8 +82,18 @@ class Perfume(Base):
             f"volumen_ml={self.volumen_ml}, " 
             f"precio={self.precio}, "
             f"stock={self.stock}, "
-            f"marca_id={self.marca_id}"
+            f"marca_id={self.marca_id}, "
+            f"descuento={self.descuento}"
             )
+    
+    @property
+    def precio_final(self):
+        if self.descuento is None:
+            return self.precio
+        
+        precio_final = self.precio - ((self.precio*self.descuento)/100)
+        return precio_final.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
         
 class RolUsuario(Enum):
     USER = "user"

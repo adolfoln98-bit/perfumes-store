@@ -48,9 +48,22 @@ def crear_perfume(nombre, volumen_ml, marca_id, precio, stock=0):
             
     return id_perfume
 
-def obtener_perfumes():
+def obtener_perfumes(nombre_marca=None, precio_min=None, precio_max=None, ordenar_por="marca", direccion="asc"):
+    
+    if precio_min is not None and precio_max is not None and precio_max < precio_min:
+        raise perfumes_exception.FiltroPrecioInvalidoError("El precio minimo debe ser menor que el maximo")
+    
+    ordenar_por_valido = ["marca", "nombre", "precio"]
+    direccion_valida = ["asc", "desc"]
+    
+    if ordenar_por.lower() not in ordenar_por_valido:
+        raise perfumes_exception.CriterioDeOrdenacionInvalidaError("Criterio de ordenación inválido")
+    
+    if direccion.lower() not in direccion_valida:
+        raise perfumes_exception.DireccionDeOrdenacionInvalidaError("Dirección de ordenación inválida")            
+    
     with get_session() as session:
-        perfumes = perfumes_repository.obtener_perfumes(session)
+        perfumes = perfumes_repository.obtener_perfumes(session, nombre_marca, precio_min, precio_max, ordenar_por.lower(), direccion.lower())
     
     return perfumes
 
@@ -146,4 +159,28 @@ def reponer_stock(id_perfume, cantidad):
     with get_session() as session:
         perfume_actualizado = perfumes_repository.obtener_perfume_por_id(session, id_perfume)            
                 
+    return perfume_actualizado
+
+
+def administrar_descuento(id_perfume, descuento):
+    
+    if descuento is not None and (descuento >= 100 or descuento <= 0):
+        raise perfumes_exception.DescuentoInvalidoError("El descuento debe ser mayor de 0 y menor de 100")
+    
+    with get_session() as session:
+        perfume = perfumes_repository.obtener_perfume_por_id(session, id_perfume)
+        
+        if perfume is None:
+            raise perfumes_exception.PerfumeNoEncontradoError(f"No se ha encontrado el perfume con el id: {id_perfume}")
+        
+        perfumes_repository.actualizar_descuento(
+            perfume,
+            descuento
+        )
+        session.flush()
+        session.commit()
+    
+    with get_session() as session:
+        perfume_actualizado = perfumes_repository.obtener_perfume_por_id(session, id_perfume)
+    
     return perfume_actualizado
