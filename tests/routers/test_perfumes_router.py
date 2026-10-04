@@ -1084,3 +1084,105 @@ def test_no_admin_intenta_agregar_descuento(
         
     finally:
         del main.app.dependency_overrides[dependencies.obtener_usuario_actual]
+
+
+def test_obtener_perfumes_con_descuento(
+    override_perfume_session,
+    override_marca_session 
+):
+    
+    marca = obtener_objeto_marca(override_marca_session, "test1")
+
+    perfume1 = {
+        "nombre": "perfume1",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": Decimal("100.00"),
+        "stock": 100
+    }
+    
+    id_perfume1 = perfumes_service.crear_perfume(
+        perfume1["nombre"],
+        perfume1["volumen_ml"],
+        perfume1["marca_id"],
+        perfume1["precio"],
+        perfume1["stock"]
+        )
+    
+    perfume2 = {
+        "nombre": "perfume2",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": Decimal("100.00"),
+        "stock": 100
+    }
+    
+    id_perfume2 = perfumes_service.crear_perfume(
+        perfume2["nombre"],
+        perfume2["volumen_ml"],
+        perfume2["marca_id"],
+        perfume2["precio"],
+        perfume2["stock"]
+        )
+    
+    descuento = 20
+    perfumes_service.administrar_descuento(id_perfume1, descuento)
+    
+    response = cliente.get("/api/perfumes?en_oferta=true")
+        
+    assert response.status_code == 200
+        
+    datos = response.json()
+    assert len(datos) == 1
+    assert datos[0]["id"] == id_perfume1
+
+
+def test_obtener_perfumes_sin_descuento(
+    override_perfume_session,
+    override_marca_session 
+):
+    
+    marca = obtener_objeto_marca(override_marca_session, "test1")
+
+    perfume1 = {
+        "nombre": "perfume1",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": Decimal("100.00"),
+        "stock": 100
+    }
+    
+    id_perfume1 = perfumes_service.crear_perfume(
+        perfume1["nombre"],
+        perfume1["volumen_ml"],
+        perfume1["marca_id"],
+        perfume1["precio"],
+        perfume1["stock"]
+        )
+    
+    perfume2 = {
+        "nombre": "perfume2",
+        "volumen_ml": 50,
+        "marca_id": marca.id,
+        "precio": Decimal("100.00"),
+        "stock": 100
+    }
+    
+    id_perfume2 = perfumes_service.crear_perfume(
+        perfume2["nombre"],
+        perfume2["volumen_ml"],
+        perfume2["marca_id"],
+        perfume2["precio"],
+        perfume2["stock"]
+        )
+    
+    descuento = 20
+    perfumes_service.administrar_descuento(id_perfume1, descuento)
+    
+    response = cliente.get("/api/perfumes?en_oferta=false")
+        
+    assert response.status_code == 200
+        
+    datos = response.json()
+    assert len(datos) == 1
+    assert datos[0]["id"] == id_perfume2

@@ -40,7 +40,8 @@ def obtener_perfumes(
     precio_min: Decimal = None,
     precio_max: Decimal = None,
     ordenar_por: str = "marca",
-    direccion: str = "asc"
+    direccion: str = "asc",
+    en_oferta: bool | None = None
 ):
     try:
         perfumes = perfumes_service.obtener_perfumes(
@@ -48,7 +49,8 @@ def obtener_perfumes(
             precio_min=precio_min,
             precio_max=precio_max,
             ordenar_por=ordenar_por,
-            direccion=direccion
+            direccion=direccion,
+            en_oferta=en_oferta
         )
         
     except (

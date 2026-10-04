@@ -48,7 +48,7 @@ def crear_perfume(nombre, volumen_ml, marca_id, precio, stock=0):
             
     return id_perfume
 
-def obtener_perfumes(nombre_marca=None, precio_min=None, precio_max=None, ordenar_por="marca", direccion="asc"):
+def obtener_perfumes(nombre_marca=None, precio_min=None, precio_max=None, ordenar_por="marca", direccion="asc", en_oferta=None):
     
     if precio_min is not None and precio_max is not None and precio_max < precio_min:
         raise perfumes_exception.FiltroPrecioInvalidoError("El precio minimo debe ser menor que el maximo")
@@ -63,7 +63,15 @@ def obtener_perfumes(nombre_marca=None, precio_min=None, precio_max=None, ordena
         raise perfumes_exception.DireccionDeOrdenacionInvalidaError("Dirección de ordenación inválida")            
     
     with get_session() as session:
-        perfumes = perfumes_repository.obtener_perfumes(session, nombre_marca, precio_min, precio_max, ordenar_por.lower(), direccion.lower())
+        perfumes = perfumes_repository.obtener_perfumes(
+            session,
+            nombre_marca,
+            precio_min,
+            precio_max,
+            ordenar_por.lower(),
+            direccion.lower(),
+            en_oferta
+        )
     
     return perfumes
 

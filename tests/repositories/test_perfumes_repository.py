@@ -299,3 +299,47 @@ def test_obtener_perfume_ordenados_por_precio_desc(
     assert perfumes[3].id == perfume6.id
     assert perfumes[4].id == perfume2.id
     assert perfumes[5].id == perfume3.id
+
+
+def test_obtener_perfumes_con_descuento(
+    override_marca_session,
+    override_perfume_session
+):
+    nombre_marca1 = "Dior"
+    nombre_marca2 = "Chanel"
+    
+    marca1 = obtener_objeto_marca(override_marca_session, nombre_marca1)
+    marca2 = obtener_objeto_marca(override_marca_session, nombre_marca2)
+    
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca1.id, 120)
+    perfume2 = obtener_perfume_precio(override_perfume_session, marca2.id, 80)
+
+    perfume1.descuento = 20
+    override_perfume_session.commit()
+    
+    perfume_con_descuento = perfumes_repository.obtener_perfumes(override_perfume_session, en_oferta=True)
+    
+    assert len(perfume_con_descuento) == 1
+    assert perfume_con_descuento[0].id == perfume1.id
+    
+
+def test_obtener_perfumes_sin_descuento(
+    override_marca_session,
+    override_perfume_session
+):
+    nombre_marca1 = "Dior"
+    nombre_marca2 = "Chanel"
+    
+    marca1 = obtener_objeto_marca(override_marca_session, nombre_marca1)
+    marca2 = obtener_objeto_marca(override_marca_session, nombre_marca2)
+    
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca1.id, 120)
+    perfume2 = obtener_perfume_precio(override_perfume_session, marca2.id, 80)
+
+    perfume1.descuento = 20
+    override_perfume_session.commit()
+    
+    perfume_sin_descuento = perfumes_repository.obtener_perfumes(override_perfume_session, en_oferta=False)
+    
+    assert len(perfume_sin_descuento) == 1
+    assert perfume_sin_descuento[0].id == perfume2.id

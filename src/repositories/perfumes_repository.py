@@ -16,7 +16,7 @@ def crear_perfume(session, nombre, volumen_ml, marca_id, precio, stock):
     return perfume
 
 
-def obtener_perfumes(session, nombre_marca=None, precio_min=None, precio_max=None, ordenar_por="marca", direccion= "asc"):
+def obtener_perfumes(session, nombre_marca=None, precio_min=None, precio_max=None, ordenar_por="marca", direccion="asc", en_oferta=None):
     consulta_perfumes = select(Perfume)
     
     if nombre_marca is not None or ordenar_por == "marca":
@@ -31,6 +31,11 @@ def obtener_perfumes(session, nombre_marca=None, precio_min=None, precio_max=Non
     if precio_max is not None:
         consulta_perfumes = consulta_perfumes.where(Perfume.precio <= precio_max)
     
+    if en_oferta is not None:
+        if en_oferta:
+            consulta_perfumes = consulta_perfumes.where(Perfume.descuento.is_not(None))
+        else:
+            consulta_perfumes = consulta_perfumes.where(Perfume.descuento.is_(None))
     
     if ordenar_por == "marca":
         columnas = [Marca.nombre, Perfume.nombre]
@@ -48,6 +53,7 @@ def obtener_perfumes(session, nombre_marca=None, precio_min=None, precio_max=Non
     else:
         for columna in columnas:
             orden_columnas.append(columna.desc())
+    
         
     consulta_perfumes = consulta_perfumes.options(
         joinedload(Perfume.marca)
