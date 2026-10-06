@@ -10,8 +10,12 @@ from sqlalchemy import (
     String,
     Integer,
     DateTime,
-    func
+    func,
+    select,
+    case
 )
+from sqlalchemy.ext.hybrid import hybrid_property
+
 from enum import Enum
 from sqlalchemy import Enum as sqlEnum
 
@@ -86,14 +90,20 @@ class Perfume(Base):
             f"descuento={self.descuento}"
             )
     
-    @property
+    @hybrid_property
     def precio_final(self):
         if self.descuento is None:
             return self.precio
         
         precio_final = self.precio - ((self.precio*self.descuento)/100)
         return precio_final.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        
+    
+    @precio_final.expression
+    def precio_final(cls):
+        return  case(
+            (cls.descuento.is_(None), cls.precio),
+            else_=func.round(cls.precio - (cls.precio*cls.descuento)/100, 2)
+            )
         
 class RolUsuario(Enum):
     USER = "user"

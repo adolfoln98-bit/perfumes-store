@@ -26,10 +26,10 @@ def obtener_perfumes(session, nombre_marca=None, precio_min=None, precio_max=Non
             consulta_perfumes = consulta_perfumes.where(Marca.nombre.ilike(f"%{nombre_marca}%"))
             
     if precio_min is not None:
-        consulta_perfumes = consulta_perfumes.where(Perfume.precio >= precio_min)
+        consulta_perfumes = consulta_perfumes.where(Perfume.precio_final >= precio_min)
     
     if precio_max is not None:
-        consulta_perfumes = consulta_perfumes.where(Perfume.precio <= precio_max)
+        consulta_perfumes = consulta_perfumes.where(Perfume.precio_final <= precio_max)
     
     if en_oferta is not None:
         if en_oferta:
@@ -44,7 +44,7 @@ def obtener_perfumes(session, nombre_marca=None, precio_min=None, precio_max=Non
         columnas = [Perfume.nombre]
             
     elif ordenar_por == "precio":
-        columnas = [Perfume.precio]
+        columnas = [Perfume.precio_final]
     
     orden_columnas = []
     if direccion == "asc":

@@ -343,3 +343,72 @@ def test_obtener_perfumes_sin_descuento(
     
     assert len(perfume_sin_descuento) == 1
     assert perfume_sin_descuento[0].id == perfume2.id
+    
+
+def test_obtener_perfumes_precio_final_maximo(
+    override_marca_session,
+    override_perfume_session
+):
+    nombre_marca1 = "Dior"
+    
+    marca = obtener_objeto_marca(override_marca_session, nombre_marca1)
+    
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca.id, 100)
+    obtener_perfume_precio(override_perfume_session, marca.id, 55)
+
+    perfume1.descuento = 50
+    override_perfume_session.commit()
+    
+    perfume_consulta = perfumes_repository.obtener_perfumes(override_perfume_session, precio_max=50)
+    assert len(perfume_consulta) == 1
+    
+    id_perfume = perfume_consulta[0].id
+    assert perfume1.id == id_perfume
+
+
+def test_obtener_perfumes_precio_final_minimo(
+    override_marca_session,
+    override_perfume_session
+):
+    nombre_marca1 = "Dior"
+    
+    marca = obtener_objeto_marca(override_marca_session, nombre_marca1)
+    
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca.id, 100)
+    perfume2 = obtener_perfume_precio(override_perfume_session, marca.id, 70)
+
+    perfume1.descuento = 50
+    override_perfume_session.commit()
+    
+    perfume_consulta = perfumes_repository.obtener_perfumes(override_perfume_session, precio_min=60)
+    assert len(perfume_consulta) == 1
+    
+    id_perfume = perfume_consulta[0].id
+    assert perfume2.id == id_perfume
+
+
+def test_obtener_perfumes_por_precio_final_asc(
+    override_marca_session,
+    override_perfume_session
+):
+    
+    nombre_marca1 = "Dior"
+    nombre_marca2 = "Chanel"
+
+    marca1 = obtener_objeto_marca(override_marca_session, nombre_marca1)
+    marca2 = obtener_objeto_marca(override_marca_session, nombre_marca2)
+
+    perfume1 = obtener_perfume_precio(override_perfume_session, marca1.id, 100)
+    perfume2 = obtener_perfume_precio(override_perfume_session, marca2.id, 80)
+    perfume3 = obtener_perfume_precio(override_perfume_session, marca1.id, 60)
+
+    perfume1.descuento = 50
+    override_perfume_session.commit()
+    
+    perfumes = perfumes_repository.obtener_perfumes(override_perfume_session, ordenar_por="precio", direccion="asc")
+    
+    assert len(perfumes) == 3
+    
+    assert perfumes[0].id == perfume1.id
+    assert perfumes[1].id == perfume3.id
+    assert perfumes[2].id == perfume2.id
