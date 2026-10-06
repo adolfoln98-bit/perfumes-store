@@ -389,3 +389,103 @@ Lanzar HTTPException directamente desde los servicios o repositorios.
 Motivo del descarte
 
 Introducir HTTPException en las capas internas acoplaría la lógica de negocio a FastAPI y al protocolo HTTP. Además, dificultaría reutilizar los mismos casos de uso desde otros contextos y mezclaría las reglas del dominio con decisiones propias de la interfaz de la API.
+
+DT-020 — Modelado del pedido como snapshot histórico de la compra
+
+Decisión
+
+Representar cada pedido mediante las entidades Pedido y LineaPedido, almacenando en cada línea una copia del nombre del perfume y del precio unitario realmente pagado en el momento de la compra.
+
+Motivo
+
+Un pedido representa un hecho histórico y debe poder interpretarse correctamente aunque el catálogo cambie posteriormente. El nombre, el precio o el descuento de un perfume pueden modificarse después de una compra, pero esos cambios no deben alterar la información económica ni descriptiva del pedido ya confirmado.
+
+Por este motivo, LineaPedido mantiene la referencia al perfume, pero conserva además los datos relevantes de la compra como snapshot histórico. El total del pedido se calcula a partir de las cantidades y precios unitarios almacenados en sus líneas.
+
+Alternativas consideradas
+
+Consultar siempre el nombre y el precio actuales del perfume o almacenar también un campo total persistido en Pedido.
+
+Motivo del descarte
+
+Depender únicamente del estado actual del catálogo haría que un pedido antiguo pudiera cambiar de significado con el tiempo. Almacenar el total introduciría un dato derivado que podría quedar desincronizado respecto a sus líneas; mientras no exista una necesidad específica de persistirlo, se calcula a partir de la información histórica de LineaPedido.
+
+DT-021 — Confirmación del pedido y actualización de stock como operación atómica
+
+Decisión
+
+Realizar el checkout dentro de una única transacción que valida nuevamente el stock, crea el pedido y sus líneas, descuenta las existencias y vacía las líneas del carrito.
+
+Motivo
+
+El carrito representa intención de compra y no reserva inventario. Por ello, la disponibilidad debe comprobarse de nuevo en el momento de confirmar el pedido. Todas las modificaciones derivadas de la compra forman un único caso de uso y deben persistirse conjuntamente.
+
+Si cualquiera de las operaciones falla, se ejecuta rollback para impedir estados parciales, como un pedido creado sin descontar stock o un carrito vaciado sin haberse completado correctamente la compra.
+
+Alternativas consideradas
+
+Descontar stock durante la gestión del carrito o confirmar por separado la creación del pedido, la actualización del stock y el vaciado del carrito.
+
+Motivo del descarte
+
+Reservar stock desde el carrito introduciría una política de reservas que no forma parte de los requisitos actuales. Dividir el checkout en varias transacciones rompería la atomicidad y permitiría inconsistencias si una operación intermedia fallase.
+
+DT-022 — Descuentos integrados en Perfume sin entidad Oferta independiente
+
+Decisión
+
+Representar las ofertas actuales mediante un campo descuento opcional en Perfume, expresado como porcentaje entero entre 1 y 99. La ausencia de oferta se representa mediante NULL.
+
+Motivo
+
+Los requisitos actuales solo necesitan aplicar, modificar o retirar un descuento sobre un perfume. Crear una entidad Oferta independiente introduciría estructura adicional sin aportar funcionalidad necesaria en esta fase.
+
+La base de datos protege la regla mediante una restricción CHECK que permite únicamente NULL o porcentajes válidos. La administración del descuento se mantiene como una operación específica del catálogo y no forma parte de la creación o actualización genérica de un perfume.
+
+Alternativas consideradas
+
+Crear una entidad Oferta con relaciones propias, utilizar 0 para representar ausencia de descuento o permitir descuentos del 100 %.
+
+Motivo del descarte
+
+Una entidad Oferta tendría sentido si apareciesen campañas, fechas de vigencia, cupones, promociones compartidas o historial de ofertas, pero actualmente supondría complejidad prematura. NULL expresa de forma más clara la ausencia de oferta que un valor 0. El descuento del 100 % implicaría reglas de promociones o productos gratuitos que quedan fuera del alcance actual.
+
+DT-023 — Precio final calculado y reutilizable en Python y SQL
+
+Decisión
+
+No almacenar precio_final como columna persistida. Definirlo como una hybrid_property de SQLAlchemy calculada a partir de precio y descuento, con una implementación para objetos Python y una expresión SQL equivalente para consultas.
+
+Motivo
+
+El precio final es un dato derivado. Persistirlo duplicaría información y obligaría a mantenerlo sincronizado cada vez que cambiasen el precio base o el descuento.
+
+La hybrid_property permite mantener una única abstracción de dominio: sobre una instancia devuelve el precio efectivo redondeado a dos decimales y, dentro de una consulta SQLAlchemy, se traduce a una expresión CASE y ROUND que PostgreSQL puede utilizar en filtros y ordenaciones.
+
+Alternativas consideradas
+
+Almacenar precio_final en la tabla Perfume o repetir manualmente la fórmula del descuento en cada repositorio que la necesite.
+
+Motivo del descarte
+
+Persistir un valor derivado aumenta el riesgo de inconsistencias. Duplicar la fórmula en distintos repositorios dispersaría una misma regla del dominio y dificultaría mantener un comportamiento coherente entre Python y las consultas SQL.
+
+DT-024 — Filtros y ordenación del catálogo basados en el precio efectivo
+
+Decisión
+
+Interpretar los filtros precio_min y precio_max y la ordenación por precio utilizando precio_final, es decir, el importe que realmente pagaría el cliente después de aplicar un posible descuento.
+
+Motivo
+
+Una vez incorporadas las ofertas, utilizar el precio base produciría resultados incoherentes para el usuario. Un perfume con precio base de 100 y un descuento del 50 % debe comportarse como un producto de 50 al filtrar u ordenar el catálogo por precio.
+
+La expresión SQL de la hybrid_property permite realizar estas operaciones directamente en PostgreSQL sin cargar primero todo el catálogo en memoria ni almacenar una columna adicional.
+
+Alternativas consideradas
+
+Mantener filtros y ordenación sobre el precio base o realizar el cálculo y filtrado posteriormente en Python.
+
+Motivo del descarte
+
+Utilizar el precio base no representa el coste real mostrado al cliente cuando existe una oferta. Filtrar u ordenar en Python requeriría recuperar más datos de los necesarios y trasladaría a la aplicación una operación que la base de datos puede resolver de forma eficiente.
