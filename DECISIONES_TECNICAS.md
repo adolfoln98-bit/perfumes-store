@@ -220,11 +220,11 @@ DT-012 — Autorización mediante roles de usuario
 
 Decisión
 
-Definir roles USER y ADMIN y centralizar las comprobaciones de autorización mediante dependencias de FastAPI.
+Definir roles USER, ADMIN y SUPERADMIN y centralizar las comprobaciones de autorización mediante dependencias de FastAPI.
 
 Motivo
 
-No todas las operaciones de la API deben estar disponibles para cualquier usuario autenticado. Las operaciones administrativas, como determinadas modificaciones sobre usuarios o catálogo, requieren distinguir entre usuarios normales y administradores.
+No todas las operaciones de la API deben estar disponibles para cualquier usuario autenticado. Las operaciones administrativas, como determinadas modificaciones sobre usuarios o catálogo, requieren distinguir entre usuarios normales, administradores y superadministradores. Las dependencias de autorización comprueban el rol vigente del usuario recuperado de la base de datos.
 
 Centralizar esta comprobación en dependencias permite reutilizar la misma política de autorización en distintos endpoints y evita repetir lógica de permisos dentro de cada router.
 
@@ -489,3 +489,58 @@ Mantener filtros y ordenación sobre el precio base o realizar el cálculo y fil
 Motivo del descarte
 
 Utilizar el precio base no representa el coste real mostrado al cliente cuando existe una oferta. Filtrar u ordenar en Python requeriría recuperar más datos de los necesarios y trasladaría a la aplicación una operación que la base de datos puede resolver de forma eficiente.
+
+
+DT-025 — Protección de recursos mediante ownership para prevenir BOLA
+
+Decisión
+
+Comprobar en los casos de uso que los recursos privados pertenecen al usuario autenticado, utilizando su identidad obtenida de la autenticación y aplicando filtros por propietario en las consultas correspondientes.
+
+Motivo
+
+La autenticación demuestra quién realiza la petición, pero no autoriza por sí sola el acceso a cualquier recurso. Los pedidos y carritos deben quedar limitados a su propietario. Las consultas del carrito filtran por usuario_id y las líneas por carrito_id y perfume_id. La recuperación de pedidos comprueba el propietario y evita revelar pedidos ajenos.
+
+Alternativas consideradas
+
+Confiar en los identificadores enviados por el cliente o comprobar únicamente que existe un usuario autenticado.
+
+Motivo del descarte
+
+Ambas opciones permitirían intentar acceder a recursos de otros usuarios cambiando identificadores, introduciendo vulnerabilidades de autorización a nivel de objeto (BOLA).
+
+DT-026 — Gestión restringida del rol SUPERADMIN
+
+Decisión
+
+Reservar la modificación de roles a usuarios SUPERADMIN, impidiendo mediante la API la auto-modificación del rol, la modificación de otros SUPERADMIN y la asignación del rol SUPERADMIN.
+
+Motivo
+
+La administración de privilegios requiere límites adicionales para evitar escaladas de permisos y cambios accidentales en cuentas con privilegios máximos. Las comprobaciones se centralizan en las dependencias y reglas del caso de uso, y se verifican con tests.
+
+Alternativas consideradas
+
+Permitir que cualquier ADMIN modifique roles o que SUPERADMIN conceda ese mismo rol libremente mediante el endpoint público.
+
+Motivo del descarte
+
+Estas alternativas ampliarían innecesariamente la capacidad de conceder privilegios elevados y aumentarían el riesgo de escalada o pérdida de control sobre las cuentas administrativas.
+
+DT-027 — JWT con identidad y autorización basada en el rol vigente
+
+Decisión
+
+Incluir en el JWT el identificador del usuario mediante el claim sub y su expiración mediante exp, sin almacenar el rol. Recuperar el usuario y su rol actual desde la base de datos al autorizar cada petición protegida.
+
+Motivo
+
+Los permisos pueden cambiar durante la vigencia de un token. Consultar el rol actual evita que un JWT emitido antes de un cambio de privilegios conserve autorizaciones obsoletas. El token se utiliza para identificar al usuario y la base de datos actúa como fuente de verdad para sus permisos.
+
+Alternativas consideradas
+
+Incluir el rol en los claims del JWT y confiar en él hasta la expiración del token.
+
+Motivo del descarte
+
+Los cambios de rol no se reflejarían inmediatamente en tokens ya emitidos, lo que podría mantener permisos revocados durante su periodo de validez.

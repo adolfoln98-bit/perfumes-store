@@ -11,27 +11,37 @@ from exceptions import usuarios as usuarios_exception
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def obtener_usuario_actual(token= Depends(oauth2_scheme)):
-    
+
     try:
         token_usuario = jwt_security.verificar_access_token(token)
-    
+
         usuario = usuarios_service.obtener_usuario_por_id(token_usuario["id"])
-        
+
     except (usuarios_exception.UsuarioNoEncontradoError, auth_exception.TokenInvalidoError) as error:
          raise HTTPException(
              status_code=401,
              detail=str(error),
              headers={"WWW-Authenticate": "Bearer"}
              )
-    
+
     return usuario
 
 def obtener_admin_actual(usuario_actual = Depends(obtener_usuario_actual)):
-    if usuario_actual.rol != models.RolUsuario.ADMIN:
+    rol_permitido = (models.RolUsuario.ADMIN, models.RolUsuario.SUPERADMIN)
+    if usuario_actual.rol not in rol_permitido:
         raise HTTPException(
             status_code = 403,
             detail = "No tienes los permisos necesarios"
         )
-    
+
     return usuario_actual
-    
+
+
+def obtener_superadmin_actual(usuario_actual = Depends(obtener_usuario_actual)):
+    if usuario_actual.rol != models.RolUsuario.SUPERADMIN:
+        raise HTTPException(
+            status_code = 403,
+            detail = "No tienes los permisos necesarios"
+        )
+
+    return usuario_actual

@@ -11,7 +11,6 @@ from sqlalchemy import (
     Integer,
     DateTime,
     func,
-    select,
     case
 )
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -26,7 +25,7 @@ class Base(DeclarativeBase):
     pass
 
 class Marca(Base):
-    
+
     __tablename__ = "marcas"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(
@@ -34,31 +33,31 @@ class Marca(Base):
         unique=True,
         nullable=False
         )
-    
+
     perfumes: Mapped[list["Perfume"]] = relationship(back_populates="marca")
-    
+
     def __repr__(self):
-        return( 
+        return(
             f"Id={self.id}, "
             f"nombre={self.nombre}"
-            )    
-    
+            )
+
 class Perfume(Base):
-    
+
     __tablename__ = "perfumes"
-    
+
     __table_args__ = (
         CheckConstraint("precio > 0", name="ck_perfumes_precio_positivo"),
         CheckConstraint("stock >=0", name="ck_perfumes_stock_no_negativo"),
         CheckConstraint("descuento is null or (descuento > 0 and descuento < 100)", name="ck_perfumes_descuento_valido"),
     )
-        
+
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(
         Text,
         nullable=False
         )
-    
+
     volumen_ml: Mapped[int] = mapped_column(nullable=False)
     precio: Mapped[Decimal] = mapped_column(
         Numeric(10,2),
@@ -69,63 +68,64 @@ class Perfume(Base):
         server_default="0",
         nullable=False
     )
-    
+
     marca_id: Mapped[int] = mapped_column(ForeignKey("marcas.id"),nullable=False)
-    
+
     descuento: Mapped[int | None] = mapped_column()
-    
+
     marca: Mapped["Marca"] = relationship(back_populates="perfumes")
     lineas_carrito: Mapped[list["LineaCarrito"]] = relationship(back_populates="perfume", passive_deletes=True)
     lineas_pedido: Mapped[list["LineaPedido"]] = relationship(back_populates="perfume")
 
-    
+
     def __repr__(self):
-        return( 
+        return(
             f"Id={self.id}, "
             f"nombre={self.nombre}, "
-            f"volumen_ml={self.volumen_ml}, " 
+            f"volumen_ml={self.volumen_ml}, "
             f"precio={self.precio}, "
             f"stock={self.stock}, "
             f"marca_id={self.marca_id}, "
             f"descuento={self.descuento}"
             )
-    
+
     @hybrid_property
     def precio_final(self):
         if self.descuento is None:
             return self.precio
-        
+
         precio_final = self.precio - ((self.precio*self.descuento)/100)
         return precio_final.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    
+
     @precio_final.expression
     def precio_final(cls):
         return  case(
             (cls.descuento.is_(None), cls.precio),
             else_=func.round(cls.precio - (cls.precio*cls.descuento)/100, 2)
             )
-        
+
 class RolUsuario(Enum):
     USER = "user"
     ADMIN = "admin"
-    
+    SUPERADMIN = "superadmin"
+
 class Usuario(Base):
-    
+
     __tablename__ = "usuarios"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
-    
+
     email: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
         unique=True
-    ) 
-    
+    )
+
     password_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False
     )
-    
+
     rol: Mapped[RolUsuario] = mapped_column(
         sqlEnum(
             RolUsuario,
@@ -139,29 +139,29 @@ class Usuario(Base):
     )
     carrito: Mapped[Carrito | None] = relationship(back_populates="usuario", uselist=False, passive_deletes=True)
     pedidos: Mapped[list[Pedido]] = relationship(back_populates="usuario")
-    
+
     def __repr__(self):
         return (
             f"Id={self.id}, "
             f"email={self.email}, "
             f"rol={self.rol.value}"
         )
-        
+
 
 class Carrito(Base):
-    
+
     __tablename__ = "carritos"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     usuario_id: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
         )
-    
+
     usuario: Mapped["Usuario"] = relationship(back_populates="carrito")
     lineas_carrito: Mapped[list["LineaCarrito"]] = relationship(back_populates="carrito", passive_deletes=True)
-    
+
     def __repr__(self):
         return(
             f"Id={self.id}, "
@@ -169,9 +169,9 @@ class Carrito(Base):
         )
 
 class LineaCarrito(Base):
-    
+
     __tablename__ = "lineas_carrito"
-    
+
     __table_args__ = (
             CheckConstraint("cantidad > 0", name="ck_linea_carrito_cantidad_positiva"),
             UniqueConstraint("carrito_id", "perfume_id", name="uq_lineas_carrito_carrito_perfume")
@@ -190,10 +190,10 @@ class LineaCarrito(Base):
         Integer,
         nullable=False
     )
-    
+
     carrito: Mapped["Carrito"] = relationship(back_populates="lineas_carrito")
     perfume: Mapped["Perfume"] = relationship(back_populates="lineas_carrito")
-    
+
     def __repr__(self):
         return (
             f"Id={self.id}, "
@@ -203,23 +203,23 @@ class LineaCarrito(Base):
         )
 
 class Pedido(Base):
-    
+
     __tablename__ = "pedidos"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
-    
+
     usuario_id: Mapped[int] = mapped_column(
-        ForeignKey("usuarios.id"), 
+        ForeignKey("usuarios.id"),
         nullable=False
         )
-    
+
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
         )
-    
+
     usuario: Mapped["Usuario"] = relationship(back_populates="pedidos")
     lineas_pedido: Mapped[list["LineaPedido"]] = relationship(back_populates="pedido")
-    
+
     def __repr__(self):
         return(
             f"Id={self.id}, "
@@ -228,7 +228,7 @@ class Pedido(Base):
         )
 
 class LineaPedido(Base):
-    
+
     __tablename__ = "lineas_pedido"
 
     __table_args__ = (
@@ -257,10 +257,10 @@ class LineaPedido(Base):
         Numeric(10,2),
         nullable=False
     )
-    
+
     pedido: Mapped["Pedido"] = relationship(back_populates="lineas_pedido")
     perfume: Mapped["Perfume"] = relationship(back_populates="lineas_pedido")
-    
+
     def __repr__(self):
         return(
             f"Id={self.id}, "

@@ -15,10 +15,10 @@ usuarios_router = APIRouter(
 def crear_usuario(usuario: usuarios_schema.UsuarioCreate):
     try:
         id_nuevo_usuario = usuarios_service.crear_usuario(usuario.email, usuario.password)
-        
+
     except usuarios_exception.EmailYaRegistradoError as error:
         raise HTTPException(status_code=409, detail=str(error))
-    
+
     return usuarios_service.obtener_usuario_por_id(id_nuevo_usuario)
 
 @usuarios_router.get("/me", response_model=usuarios_schema.UsuarioResponse)
@@ -32,13 +32,19 @@ def obtener_perfil_actual(usuario_actual = Depends(dependencies.obtener_usuario_
 def modificar_rol(
     id_usuario: int,
     rol_usuario: usuarios_schema.UsuarioRol,
-    admin_actual = Depends(dependencies.obtener_admin_actual)
+    superadmin_actual = Depends(dependencies.obtener_superadmin_actual)
     ):
     try:
-        usuarios_service.modificar_rol(id_usuario, rol_usuario.rol)
-        
+        usuarios_service.modificar_rol(id_usuario, rol_usuario.rol, superadmin_actual.id)
+
     except usuarios_exception.UsuarioNoEncontradoError as error:
         raise HTTPException(status_code=404, detail=str(error))
-    
+
+    except (
+        usuarios_exception.ModificacionRolPropioError,
+        usuarios_exception.AsignacionSuperadminNoPermitidaError,
+        usuarios_exception.ModificacionSuperadminError
+        ) as error:
+        raise HTTPException(status_code=403, detail=str(error))
+
     return usuarios_service.obtener_usuario_por_id(id_usuario)
-    

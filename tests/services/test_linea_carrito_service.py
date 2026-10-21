@@ -14,14 +14,14 @@ from exceptions import usuarios as usuarios_exception
 from exceptions import carrito as carrito_exception
 
 def obtener_usuario(override_usuario_session, email, password="abcd1234"):
-    
+
     id_usuario = usuarios_service.crear_usuario(email, password)
-    
+
     return override_usuario_session.get(models.Usuario, id_usuario)
 
 def obtener_objeto_marca(override_marca_session, nombre_marca):
     id_marca = marcas_service.crear_marca(nombre_marca)
-    
+
     return override_marca_session.get(models.Marca, id_marca)
 
 def obtener_perfume(override_perfume_session, id_marca, stock):
@@ -39,7 +39,7 @@ def obtener_perfume(override_perfume_session, id_marca, stock):
             datos_perfume["precio"],
             datos_perfume["stock"]
             )
-    
+
     return override_perfume_session.get(models.Perfume, perfume_id)
 
 def test_agregar_perfume_al_carrito(
@@ -51,33 +51,33 @@ def test_agregar_perfume_al_carrito(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 150)
-    
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
         4
     )
     assert carrito is not None
-    
+
     assert carrito.usuario_id == usuario.id
-    
+
     assert len(carrito.lineas_carrito) == 1
-    
+
     linea = carrito.lineas_carrito[0]
     assert linea.carrito_id == carrito.id
     assert linea.perfume_id == perfume.id
     assert linea.cantidad == 4
-    
+
     assert linea.perfume.id == perfume.id
-    
+
     consulta = select(models.Carrito).where(models.Carrito.usuario_id == usuario.id)
     resultado = override_linea_carrito_session.execute(consulta)
-    
+
     assert len(resultado.scalars().all()) == 1
-    
+
     consulta2 = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume.id)
     resultado2 = override_linea_carrito_session.execute(consulta2).scalar_one_or_none()
-    
+
     assert resultado2 is not None
     assert resultado2.cantidad == 4
     assert resultado2.carrito_id == carrito.id
@@ -93,7 +93,7 @@ def test_agregar_perfume_existente_al_carrito(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 150)
-    
+
     linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
@@ -104,15 +104,15 @@ def test_agregar_perfume_existente_al_carrito(
         perfume.id,
         6
     )
-    
+
     assert len(carrito.lineas_carrito) == 1
-    
+
     linea = carrito.lineas_carrito[0]
     assert linea.cantidad == 10
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume.id)
     resultado = override_linea_carrito_session.execute(consulta).scalars().all()
-    
+
     assert len(resultado) == 1
     assert resultado[0].carrito_id == carrito.id
     assert resultado[0].perfume_id == perfume.id
@@ -128,7 +128,7 @@ def test_agregar_perfume_cantidad_invalida(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 150)
-    
+
     with pytest.raises(linea_carrito_exception.CantidadInvalidaError) as error:
         linea_carrito_service.agregar_perfume_al_carrito(
             usuario.id,
@@ -136,12 +136,12 @@ def test_agregar_perfume_cantidad_invalida(
             0
         )
     assert str(error.value) == "La cantidad es incorrecta"
-    
+
     consulta = select(models.Carrito).where(models.Carrito.usuario_id == usuario.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
     assert resultado is None
-    
-        
+
+
 def test_agregar_perfume_inexistente(
     override_usuario_session,
     override_marca_session,
@@ -149,7 +149,7 @@ def test_agregar_perfume_inexistente(
 ):
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     perfume_id = 24256
-    
+
     with pytest.raises(perfumes_exception.PerfumeNoEncontradoError) as error:
         linea_carrito_service.agregar_perfume_al_carrito(
                 usuario.id,
@@ -160,7 +160,7 @@ def test_agregar_perfume_inexistente(
 
     consulta = select(models.Carrito).where(models.Carrito.usuario_id == usuario.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    assert resultado is None  
+    assert resultado is None
 
 
 def test_agregar_perfume_stock_insuficiente(
@@ -172,7 +172,7 @@ def test_agregar_perfume_stock_insuficiente(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 3)
-    
+
     with pytest.raises(linea_carrito_exception.StockInsuficienteError) as error:
         linea_carrito_service.agregar_perfume_al_carrito(
                 usuario.id,
@@ -183,8 +183,8 @@ def test_agregar_perfume_stock_insuficiente(
 
     consulta = select(models.Carrito).where(models.Carrito.usuario_id == usuario.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    assert resultado is None 
-    
+    assert resultado is None
+
 def test_agregar_linea_existente_stock_insuficiente(
     override_usuario_session,
     override_marca_session,
@@ -194,7 +194,7 @@ def test_agregar_linea_existente_stock_insuficiente(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 5)
-    
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
             usuario.id,
             perfume.id,
@@ -210,7 +210,7 @@ def test_agregar_linea_existente_stock_insuficiente(
 
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    
+
     assert resultado is not None
     assert resultado.cantidad == 3
 
@@ -222,7 +222,7 @@ def test_agregar_linea_usuario_inexistente(
     usuario_id = 52325
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 150)
-    
+
     with pytest.raises(usuarios_exception.UsuarioNoEncontradoError) as error:
         linea_carrito_service.agregar_perfume_al_carrito(
                 usuario_id,
@@ -244,20 +244,20 @@ def test_agregar_linea_stock_exacto(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 10)
-    
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
         10
         )
     assert carrito is not None
-    
+
     linea = carrito.lineas_carrito[0]
     assert linea.cantidad == 10
-    
+
     consulta = select(models.Carrito).where(models.Carrito.usuario_id == usuario.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    
+
     assert resultado is not None
     assert resultado.id == carrito.id
 
@@ -270,7 +270,7 @@ def test_modificar_cantidad(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 100)
-    
+
     linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
@@ -278,16 +278,16 @@ def test_modificar_cantidad(
         )
     nueva_cantidad = 6
     carrito_modificado = linea_carrito_service.modificar_cantidad(usuario.id, perfume.id, nueva_cantidad)
-    
+
     assert carrito_modificado is not None
-    
+
     linea = carrito_modificado.lineas_carrito[0]
     assert linea.cantidad == nueva_cantidad
     assert linea.perfume.id == perfume.id
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito_modificado.id, models.LineaCarrito.perfume_id == perfume.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    
+
     assert resultado is not None
     assert resultado.cantidad == nueva_cantidad
 
@@ -300,26 +300,26 @@ def test_modificar_cantidad_cantidad_mayor_stock(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 10)
-        
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
         5
     )
-    
+
     nueva_cantidad = 15
-    
+
     with pytest.raises(linea_carrito_exception.StockInsuficienteError) as error:
         linea_carrito_service.modificar_cantidad(usuario.id, perfume.id, nueva_cantidad)
-   
+
     assert str(error.value) == "No hay stock suficiente"
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume.id)
-    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none() 
-    
+    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
+
     assert resultado is not None
     assert resultado.cantidad == 5
-    
+
 def test_modificar_cantidad_cantidad_carrito_inexistente(
     override_usuario_session,
     override_marca_session,
@@ -329,14 +329,13 @@ def test_modificar_cantidad_cantidad_carrito_inexistente(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 10)
-    carrito_id = 11443   
     nueva_cantidad = 15
-    
+
     with pytest.raises(carrito_exception.CarritoNoEncontradoError) as error:
         linea_carrito_service.modificar_cantidad(usuario.id, perfume.id, nueva_cantidad)
-   
+
     assert str(error.value) == "El carrito no ha sido encontrado"
-    
+
 
 def test_modificar_cantidad_cantidad_perfume_inexistente(
     override_usuario_session,
@@ -354,16 +353,22 @@ def test_modificar_cantidad_cantidad_perfume_inexistente(
     )
     otro_perfume_id = 124466
     nueva_cantidad = 15
-    
+
     with pytest.raises(perfumes_exception.PerfumeNoEncontradoError) as error:
         linea_carrito_service.modificar_cantidad(usuario.id, otro_perfume_id, nueva_cantidad)
-   
+
     assert str(error.value) == "No se encontro el perfume"
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == otro_perfume_id)
-    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none() 
-    
+    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
+
     assert resultado is None
+
+    consulta1 = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume.id)
+    resultado1 = override_linea_carrito_session.execute(consulta1).scalar_one_or_none()
+
+    assert resultado1 is not None
+    assert resultado1.cantidad == 5
 
 def test_modificar_cantidad_cantidad_perfume_no_en_carrito(
     override_usuario_session,
@@ -382,15 +387,15 @@ def test_modificar_cantidad_cantidad_perfume_no_en_carrito(
     marca2 = obtener_objeto_marca(override_marca_session, "marca 2 test")
     perfume2 = obtener_perfume(override_perfume_session, marca2.id, 10)
     nueva_cantidad = 5
-    
+
     with pytest.raises(linea_carrito_exception.LineaNoEncontradaError) as error:
         linea_carrito_service.modificar_cantidad(usuario.id, perfume2.id, nueva_cantidad)
-   
+
     assert str(error.value) == "No se encontro la linea del carrito"
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume2.id)
-    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none() 
-    
+    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
+
     assert resultado is None
 
 def test_modificar_cantidad_cantidad_nueva_cantidad_invalida(
@@ -402,25 +407,64 @@ def test_modificar_cantidad_cantidad_nueva_cantidad_invalida(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 10)
-        
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
         5
     )
-    
+
     nueva_cantidad = -1
-    
+
     with pytest.raises(linea_carrito_exception.CantidadInvalidaError) as error:
         linea_carrito_service.modificar_cantidad(usuario.id, perfume.id, nueva_cantidad)
-   
+
     assert str(error.value) == "La nueva cantidad es incorrecta"
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume.id)
-    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none() 
-    
+    resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
+
     assert resultado is not None
     assert resultado.cantidad == 5
+
+
+def test_modificar_cantidad_aislamiento_usuarios(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_linea_carrito_session
+):
+    usuario1 = obtener_usuario(override_usuario_session, "user1@test.com")
+    usuario2 = obtener_usuario(override_usuario_session, "user2@test.com")
+    marca = obtener_objeto_marca(override_marca_session, "marca test")
+    perfume = obtener_perfume(override_perfume_session, marca.id, 100)
+
+    cantidad_carrito1 = 5
+    carrito1 = linea_carrito_service.agregar_perfume_al_carrito(
+        usuario1.id,
+        perfume.id,
+        cantidad_carrito1
+    )
+
+    cantidad_carrito2 = 8
+    carrito2 = linea_carrito_service.agregar_perfume_al_carrito(
+        usuario2.id,
+        perfume.id,
+        cantidad_carrito2
+    )
+    nueva_cantidad = 3
+    linea_carrito_service.modificar_cantidad(usuario1.id, perfume.id, nueva_cantidad)
+
+    consulta_carrito1 = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito1.id, models.LineaCarrito.perfume_id == perfume.id)
+    resultado_carrito1 = override_linea_carrito_session.execute(consulta_carrito1).scalar_one_or_none()
+    assert resultado_carrito1 is not None
+    assert resultado_carrito1.cantidad == nueva_cantidad
+
+    consulta_carrito2 = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito2.id, models.LineaCarrito.perfume_id == perfume.id)
+    resultado_carrito2 = override_linea_carrito_session.execute(consulta_carrito2).scalar_one_or_none()
+    assert resultado_carrito2 is not None
+    assert resultado_carrito2.cantidad == cantidad_carrito2
+
 
 def test_eliminar_perfume_del_carrito(
     override_usuario_session,
@@ -431,19 +475,19 @@ def test_eliminar_perfume_del_carrito(
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     marca = obtener_objeto_marca(override_marca_session, "marca test")
     perfume = obtener_perfume(override_perfume_session, marca.id, 10)
-        
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume.id,
         5
     )
     carrito_linea_borrada = linea_carrito_service.eliminar_perfume_del_carrito(usuario.id, perfume.id)
-    
+
     assert  carrito_linea_borrada.lineas_carrito == []
     assert carrito.id == carrito_linea_borrada.id
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito_linea_borrada.id, models.LineaCarrito.perfume_id == perfume.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    
+
     assert resultado is None
 
 
@@ -453,10 +497,10 @@ def test_eliminar_perfume_del_carrito_carrito_inexistente(
 ):
     usuario = obtener_usuario(override_usuario_session, "user@test.com")
     perfume_id = 12445
-        
+
     with pytest.raises(carrito_exception.CarritoNoEncontradoError) as error:
         linea_carrito_service.eliminar_perfume_del_carrito(usuario.id, perfume_id)
-    
+
     assert str(error.value) == "El carrito no ha sido encontrado"
 
 
@@ -472,7 +516,7 @@ def test_eliminar_perfume_del_carrito_perfume_no_en_carrito(
 
     marca2 = obtener_objeto_marca(override_marca_session, "marca test2")
     perfume2 = obtener_perfume(override_perfume_session, marca2.id, 10)
-  
+
     carrito = linea_carrito_service.agregar_perfume_al_carrito(
         usuario.id,
         perfume1.id,
@@ -480,11 +524,49 @@ def test_eliminar_perfume_del_carrito_perfume_no_en_carrito(
     )
     with pytest.raises(linea_carrito_exception.LineaNoEncontradaError) as error:
         linea_carrito_service.eliminar_perfume_del_carrito(usuario.id, perfume2.id)
-    
+
     assert str(error.value) == "No se encontro la linea del carrito"
-    
+
     consulta = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito.id, models.LineaCarrito.perfume_id == perfume1.id)
     resultado = override_linea_carrito_session.execute(consulta).scalar_one_or_none()
-    
+
     assert resultado is not None
     assert resultado.perfume_id == perfume1.id
+
+
+def test_eliminar_perfume_del_carrito_aislamiento_usuarios(
+    override_usuario_session,
+    override_marca_session,
+    override_perfume_session,
+    override_linea_carrito_session
+):
+    usuario1 = obtener_usuario(override_usuario_session, "user1@test.com")
+    usuario2 = obtener_usuario(override_usuario_session, "user2@test.com")
+    marca = obtener_objeto_marca(override_marca_session, "marca test1")
+    perfume = obtener_perfume(override_perfume_session, marca.id, 100)
+    cantidad_perfume = 5
+    carrito_usuario1 = linea_carrito_service.agregar_perfume_al_carrito(
+        usuario1.id,
+        perfume.id,
+        cantidad_perfume
+    )
+    carrito_usuario2 = linea_carrito_service.agregar_perfume_al_carrito(
+        usuario2.id,
+        perfume.id,
+        cantidad_perfume
+    )
+
+    linea_carrito_service.eliminar_perfume_del_carrito(usuario1.id, perfume.id)
+
+
+    consulta_usuario1 = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito_usuario1.id, models.LineaCarrito.perfume_id == perfume.id)
+    resultado_usuario1 = override_linea_carrito_session.execute(consulta_usuario1).scalar_one_or_none()
+
+    assert resultado_usuario1 is None
+
+    consulta_usuario2 = select(models.LineaCarrito).where(models.LineaCarrito.carrito_id == carrito_usuario2.id, models.LineaCarrito.perfume_id == perfume.id)
+    resultado_usuario2 = override_linea_carrito_session.execute(consulta_usuario2).scalar_one_or_none()
+
+    assert resultado_usuario2 is not None
+    assert resultado_usuario2.perfume_id == perfume.id
+    assert resultado_usuario2.cantidad == cantidad_perfume
