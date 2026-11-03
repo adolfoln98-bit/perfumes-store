@@ -1,0 +1,12 @@
+.venv/
+.env
+.env.docker
+.env.postgres
+.env.test.docker
+.env.prod
+.env.postgres.prod
+.env.migrations.prod
+__pycache__/
+*.pyc
+.git/
+.pytest_cache/

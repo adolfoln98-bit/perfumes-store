@@ -6,12 +6,14 @@ from routers import (
     marcas_router,
     perfumes_router,
     carritos_router,
-    pedidos_router
+    pedidos_router,
+    health_router
 ) 
 
 app = FastAPI(
     title="Perfumes Store API",
 )
+app.include_router(health_router.health_router, prefix="/api")
 
 app.include_router(usuarios_router.usuarios_router, prefix="/api")
 

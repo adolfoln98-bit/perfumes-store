@@ -1,0 +1,56 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    volumes:
+      - ./src:/app/src
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    depends_on:
+      db:
+        condition: service_healthy
+  
+  db:
+    image: postgres:18.4
+    env_file:
+      - .env.postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db_test:
+    image: postgres:18.4
+    environment:
+      POSTGRES_USER: perfumes_test
+      POSTGRES_PASSWORD: test_password_test_database
+      POSTGRES_DB: perfumes_store_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - test
+
+  tests:
+    build: .
+    profiles:
+      - test
+    env_file:
+      - .env.test.docker
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    command: ["sh", "-c", "alembic upgrade head && pytest"]
+    depends_on:
+      db_test:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

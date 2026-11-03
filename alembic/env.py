@@ -3,7 +3,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 from src.models import Base
 
@@ -19,14 +19,20 @@ x_args = context.get_x_argument(
 
 if x_args.get("test") == "true":
     database_url = os.getenv("TEST_DATABASE_URL")
+    
+elif x_args.get("prod") == "true":
+    database_url = os.getenv("MIGRATION_DATABASE_URL")
+    
 else:
     database_url = os.getenv("DATABASE_URL")
-print(f"Base de datos seleccionada: {database_url.rsplit('/', 1)[-1]}")
-
+    
 if database_url is None:
     raise ValueError(
         "La variable de entorno de la base de datos no está definida."
     )
+
+print(f"Base de datos seleccionada: {database_url.rsplit('/', 1)[-1]}")
+
 
 config.set_main_option("sqlalchemy.url", database_url)
 
@@ -85,6 +91,10 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if x_args.get("prod") == "true":
+            connection.execute(text("SET ROLE perfumes_owner"))
+            connection.commit()
+                    
         context.configure(
             connection=connection, target_metadata=target_metadata
         )

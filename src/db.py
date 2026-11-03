@@ -11,7 +11,10 @@ if DATABASE_URL is None:
     raise ValueError("""La variable de entorno 'DATABASE_URL' no está definida. 
                      Comprueba que existe en el archivo .env y que contiene una URL de conexión válida.""")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"connect_timeout": 5}
+    )
 
 session_factory = sessionmaker(bind=engine)
 
