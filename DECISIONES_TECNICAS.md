@@ -544,3 +544,134 @@ Incluir el rol en los claims del JWT y confiar en él hasta la expiración del t
 Motivo del descarte
 
 Los cambios de rol no se reflejarían inmediatamente en tokens ya emitidos, lo que podría mantener permisos revocados durante su periodo de validez.
+
+
+DT-028 — Contenerización de la aplicación y sus dependencias
+
+Decisión
+
+Utilizar Docker y Docker Compose para definir y ejecutar los servicios de la API y PostgreSQL, manteniendo configuraciones diferenciadas cuando lo requiere el entorno.
+
+Motivo
+
+La contenerización permite reproducir las dependencias y la configuración de los servicios, reducir diferencias entre entornos y preparar el proyecto para futuras etapas de integración continua y despliegue.
+
+Alternativas consideradas
+
+Instalar y ejecutar todos los componentes directamente en el sistema anfitrión.
+
+Motivo del descarte
+
+La instalación manual aumenta la dependencia de la configuración local y dificulta reproducir el entorno en otros equipos.
+
+DT-029 — Mantener build local en los servicios de Docker Compose
+
+Decisión
+
+Mantener build: . en los servicios que necesitan construir la imagen de la aplicación, sin introducir todavía una imagen preconstruida compartida como requisito.
+
+Motivo
+
+La configuración actual es suficiente para el alcance del proyecto. Se prioriza la simplicidad y se evita añadir pasos de publicación y distribución de imágenes antes de que exista una necesidad concreta.
+
+Alternativas consideradas
+
+Construir una única imagen por separado y referenciarla desde todos los servicios.
+
+Motivo del descarte
+
+Aunque puede reducir trabajo repetido en determinados escenarios, introduce gestión adicional de imágenes y versiones. Se reconsiderará si aparecen problemas medibles de tiempo de construcción, duplicación o complejidad.
+
+DT-030 — Backups PostgreSQL mediante herramientas nativas y verificación previa
+
+Decisión
+
+Generar copias de seguridad de PostgreSQL con pg_dump en formato personalizado (-Fc), copiarlas inicialmente como archivos temporales y comprobar su legibilidad mediante pg_restore --list antes de conservarlas como copias definitivas.
+
+Motivo
+
+Las herramientas nativas de PostgreSQL permiten generar copias lógicas portables. La verificación y el uso de archivos temporales reducen el riesgo de presentar una copia incompleta como válida.
+
+Alternativas consideradas
+
+Copiar directamente los archivos físicos de la base de datos o guardar el resultado de pg_dump sin verificación.
+
+Motivo del descarte
+
+Una copia directa de archivos físicos requiere procedimientos específicos para garantizar su consistencia. Omitir la verificación deja sin detectar ciertos errores de generación o transferencia. La comprobación con pg_restore --list valida la lectura del archivo, pero no sustituye una prueba real de restauración.
+
+DT-031 — Retención de backups diarios, semanales y mensuales
+
+Decisión
+
+Conservar backups diarios de los últimos siete días, los cuatro backups semanales más recientes y los tres backups mensuales más recientes. Proteger el backup diario más reciente frente a la eliminación por antigüedad.
+
+Motivo
+
+La política proporciona varios puntos de recuperación con un consumo de almacenamiento acotado y evita que la limpieza por antigüedad elimine el último backup diario disponible.
+
+Alternativas consideradas
+
+Conservar indefinidamente todas las copias o mantener únicamente una copia diaria.
+
+Motivo del descarte
+
+La retención indefinida consume espacio sin límite; conservar una única copia ofrece poca capacidad de recuperación ante fallos detectados tardíamente.
+
+DT-032 — Automatización local de backups y prevención de solapamientos
+
+Decisión
+
+Ejecutar el backup mediante un script PowerShell programado diariamente a las 03:00 con el Programador de tareas de Windows y utilizar un bloqueo exclusivo de archivo para impedir ejecuciones simultáneas.
+
+Motivo
+
+El proyecto se ejecuta actualmente en un entorno Windows con Docker Desktop. PowerShell y el Programador de tareas permiten automatizar el proceso sin introducir un orquestador adicional. El bloqueo evita que dos ejecuciones manipulen al mismo tiempo los archivos de backup y su retención.
+
+Alternativas consideradas
+
+Ejecutar los backups manualmente, permitir ejecuciones concurrentes o incorporar desde ahora un servicio de planificación externo.
+
+Motivo del descarte
+
+La ejecución manual es fácil de olvidar, la concurrencia puede generar conflictos y un planificador externo añadiría complejidad innecesaria en el entorno actual. Esta decisión deberá revisarse al desplegar en infraestructura cloud.
+
+DT-033 — Registro de incidencias y alertas de fallo por correo
+
+Decisión
+
+Registrar las ejecuciones y errores en backups/logs/backup.log y, cuando el proceso principal de backup falla, intentar enviar una alerta descriptiva mediante un script Python con smtplib y Gmail SMTP. El fallo del correo se gestiona de forma independiente y no reemplaza el error original del backup.
+
+Motivo
+
+Los logs permiten investigar el historial y las alertas notifican fallos sin necesidad de consultar manualmente el archivo. Reutilizar el mensaje capturado por PowerShell mantiene la coherencia entre ambos canales. El proceso Python devuelve un código de salida que PowerShell comprueba explícitamente.
+
+Alternativas consideradas
+
+Depender únicamente de los logs, analizar las últimas líneas del log para reconstruir la alerta o integrar desde el inicio un sistema externo de observabilidad.
+
+Motivo del descarte
+
+Los logs por sí solos no notifican incidencias. Reconstruir el error a partir del archivo añade ambigüedad y acoplamiento. Una plataforma de observabilidad completa sería prematura para el alcance actual.
+
+DT-034 — Protección local de credenciales de Gmail para tareas automáticas
+
+Decisión
+
+Guardar la contraseña de aplicación de Gmail cifrada mediante DPAPI para el usuario de Windows que ejecuta el backup, almacenar la dirección de correo en un archivo de configuración separado y transmitir las credenciales a Python mediante la entrada estándar, sin imprimirlas en consola ni registrarlas en logs.
+
+Motivo
+
+La tarea programada debe funcionar sin interacción y no debe incluir la contraseña en texto plano dentro del repositorio o en los argumentos del proceso. DPAPI proporciona protección vinculada al contexto del usuario de Windows.
+
+Alternativas consideradas
+
+Escribir la contraseña directamente en el script, solicitarla interactivamente en cada ejecución o pasarla como argumento de línea de comandos.
+
+Motivo del descarte
+
+Incluir secretos en código o argumentos aumenta su exposición; la entrada interactiva impide la ejecución desatendida. Esta solución es local y deberá revisarse cuando se migre a CI/CD o cloud, donde corresponderá utilizar mecanismos de gestión de secretos adecuados al entorno.
+
+Estado de validación
+
+La autenticación y el envío de correos se han probado correctamente. También se ha validado manualmente una alerta mediante un fallo controlado del backup. Queda pendiente verificar el envío de alertas bajo el contexto real del Programador de tareas y realizar una prueba completa de restauración de una copia.
