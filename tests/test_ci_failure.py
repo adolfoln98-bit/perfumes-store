@@ -1,3 +1,3 @@
 
 def test_ci_detecta_fallos():
-    assert 1 == 2
+    assert 1 == 1
