@@ -1,0 +1,43 @@
+
+name: CI - Perfumes Store
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+  tests:
+    name: Ejecutar tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        
+      - name: Preparar variables de entorno de pruebas
+        shell: bash
+        run: |
+          cat > .env.test.docker <<'EOF'
+          DATABASE_URL=postgresql+psycopg://perfumes_test:test_password_test_database@db_test:5432/perfumes_store_test
+          TEST_DATABASE_URL=postgresql+psycopg://perfumes_test:test_password_test_database@db_test:5432/perfumes_store_test
+          SECRET_KEY=ci_test_secret_key_not_for_production
+          EOF
+          
+          cat > .env.docker <<'EOF'
+          DATABASE_URL=postgresql+psycopg://perfumes_test:test_password_test_database@db_test:5432/perfumes_store_test
+          SECRET_KEY=ci_test_secret_key_not_for_production
+          EOF
+          
+          cat > .env.postgres <<'EOF'
+          POSTGRES_USER=perfumes_test
+          POSTGRES_PASSWORD=test_password_test_database
+          POSTGRES_DB=perfumes_store_test
+          EOF
+
+      - name: Ejecutar tests con Docker Compose
+        run: docker compose --profile test run --build --rm tests
