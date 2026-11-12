@@ -1,11 +1,9 @@
 .venv/
+
 .env
-.env.docker
-.env.postgres
-.env.test.docker
-.env.prod
-.env.postgres.prod
-.env.migrations.prod
+.env.*
+!.env.example
+
 __pycache__/
 *.pyc
 .git/
